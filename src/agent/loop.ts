@@ -101,6 +101,15 @@ export async function runAgent(
 
     const assistantMessage = response.message;
 
+    // Debug: log what the model returned
+    console.error(`[iter ${iterations}] finish_reason=${response.finish_reason} tool_calls=${assistantMessage.tool_calls?.length ?? 0} content_len=${assistantMessage.content?.length ?? 0}`);
+    if (assistantMessage.content) {
+      console.error(`[iter ${iterations}] content_preview: ${assistantMessage.content.slice(0, 200)}`);
+    }
+    if (assistantMessage.tool_calls?.length) {
+      console.error(`[iter ${iterations}] tool_call: ${assistantMessage.tool_calls[0].function.name}(${assistantMessage.tool_calls[0].function.arguments.slice(0, 100)})`);
+    }
+
     if (assistantMessage.content) {
       lastTextOutput = assistantMessage.content;
     }
