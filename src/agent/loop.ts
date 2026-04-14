@@ -105,8 +105,18 @@ export async function runAgent(
       lastTextOutput = assistantMessage.content;
     }
 
-    // If no tool calls, we're done
+    // If no tool calls: for early iterations, nudge the model to use tools.
+    // Local models often explain instead of acting on the first try.
     if (response.finish_reason !== "tool_calls" || !assistantMessage.tool_calls?.length) {
+      if (iterations <= 3) {
+        // Add assistant response then nudge
+        messages.push({ role: "assistant", content: assistantMessage.content ?? "" });
+        messages.push({
+          role: "user",
+          content: "You have tools available. Please use the bash or str_replace_editor tool to read the contract source files and begin your analysis. Start by running: bash with command 'cat /workspace/scan/src/*.sol'",
+        });
+        continue;
+      }
       break;
     }
 
