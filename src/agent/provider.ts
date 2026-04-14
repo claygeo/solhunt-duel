@@ -177,27 +177,61 @@ export async function chatCompletion(
 // Handles: {"name": "bash", "arguments": {"command": "ls"}}
 // and: {"name": "bash", "parameters": {"command": "ls"}}
 function tryParseToolCallFromContent(content: string): ToolCall | null {
-  try {
-    // Try to find JSON in the content (may be wrapped in markdown code blocks)
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
-    const text = jsonMatch[1]?.trim() ?? content.trim();
+  // Strategy: try multiple extraction methods since local models can produce
+  // tool calls in various formats, sometimes followed by garbage tokens.
+  const candidates: string[] = [];
 
-    const parsed = JSON.parse(text);
-
-    if (parsed.name && (parsed.arguments || parsed.parameters)) {
-      const args = parsed.arguments ?? parsed.parameters;
-      return {
-        id: `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        type: "function",
-        function: {
-          name: parsed.name,
-          arguments: typeof args === "string" ? args : JSON.stringify(args),
-        },
-      };
-    }
-  } catch {
-    // Not parseable as a tool call, that's fine
+  // 1. Try markdown code block extraction
+  const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch?.[1]) {
+    candidates.push(codeBlockMatch[1].trim());
   }
+
+  // 2. Try extracting first JSON object from content (handles trailing garbage
+  //    like <|im_start|> tokens that Qwen models sometimes produce)
+  const jsonObjMatch = content.match(/\{[\s\S]*?"name"\s*:\s*"[^"]+"/);
+  if (jsonObjMatch) {
+    // Found start of a JSON object with "name" key. Now find the matching closing brace.
+    const startIdx = jsonObjMatch.index!;
+    let depth = 0;
+    let endIdx = startIdx;
+    for (let i = startIdx; i < content.length; i++) {
+      if (content[i] === '{') depth++;
+      else if (content[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+    }
+    if (depth === 0) {
+      candidates.push(content.slice(startIdx, endIdx));
+    }
+  }
+
+  // 3. Try the full content as-is
+  candidates.push(content.trim());
+
+  for (const text of candidates) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.name && (parsed.arguments || parsed.parameters)) {
+        const args = parsed.arguments ?? parsed.parameters;
+        return {
+          id: `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          type: "function",
+          function: {
+            name: parsed.name,
+            arguments: typeof args === "string" ? args : JSON.stringify(args),
+          },
+        };
+      }
+    } catch {
+      // Try next candidate
+    }
+  }
+
   return null;
 }
 
