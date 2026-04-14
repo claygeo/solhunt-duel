@@ -150,14 +150,25 @@ program
       spinner.text = "Adding contract source to sandbox...";
       await foundry.addContractSource(containerId, sources);
 
-      // Start anvil fork
-      spinner.text = "Starting blockchain fork...";
-      const fork = new ForkManager(sandbox);
-      await fork.startAnvilFork(containerId, {
-        chain: options.chain,
-        rpcUrl,
-        blockNumber: options.block ? parseInt(options.block) : undefined,
-      });
+      // Start anvil fork (skip for local files without --block)
+      const needsFork = target.startsWith("0x") || options.block;
+      if (needsFork) {
+        spinner.text = "Starting blockchain fork...";
+        const fork = new ForkManager(sandbox);
+        await fork.startAnvilFork(containerId, {
+          chain: options.chain,
+          rpcUrl,
+          blockNumber: options.block ? parseInt(options.block) : undefined,
+        });
+      } else {
+        // Start anvil without forking (local analysis only)
+        spinner.text = "Starting local anvil...";
+        const fork = new ForkManager(sandbox);
+        await fork.startAnvilFork(containerId, {
+          chain: options.chain,
+          rpcUrl: "", // empty = no fork
+        });
+      }
 
       // Build to verify sources compile
       spinner.text = "Verifying contract compiles...";
