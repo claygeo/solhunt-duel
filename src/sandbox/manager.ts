@@ -79,7 +79,7 @@ export class SandboxManager {
       Cmd: ["bash", "-c", command],
       AttachStdout: true,
       AttachStderr: true,
-      WorkingDir: "/workspace/scan",
+      WorkingDir: "/workspace",
     });
 
     return new Promise((resolve, reject) => {
