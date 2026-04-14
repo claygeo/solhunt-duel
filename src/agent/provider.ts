@@ -128,6 +128,11 @@ export async function chatCompletion(
     temperature: 0,
   };
 
+  // Ollama: request larger context window (default 4096 is too small for our prompts)
+  if (config.provider === "ollama") {
+    body.options = { num_ctx: 16384 };
+  }
+
   if (tools && tools.length > 0) {
     body.tools = tools;
     body.tool_choice = "auto";

@@ -120,14 +120,28 @@ export async function runAgent(
       if (iterations <= 8) {
         messages.push({ role: "assistant", content: assistantMessage.content ?? "" });
 
-        // Context-aware nudge: if the model already analyzed the code, tell it to write the exploit
+        // Context-aware nudge based on what stage the agent is at
         const hasReadCode = messages.some(m =>
           m.role === "tool" && m.content?.includes("pragma solidity")
         );
+        const hasForgeError = messages.some(m =>
+          m.role === "tool" && m.name === "forge_test" && (m.content?.includes("Error") || m.content?.includes("FAIL"))
+        );
+        const hasForgePass = messages.some(m =>
+          m.role === "tool" && m.name === "forge_test" && m.content?.includes("PASS")
+        );
 
-        const nudge = hasReadCode
-          ? `Good analysis. Now take action: use the str_replace_editor tool to create the exploit test file at test/Exploit.t.sol. Write the Solidity exploit code that demonstrates this vulnerability. Do NOT explain — use the tool to create the file.`
-          : `You have tools available. Use the bash tool to read the contract: bash with command 'cat /workspace/scan/src/*.sol'`;
+        let nudge: string;
+        if (hasForgePass) {
+          // Test passed — ask for the structured report
+          nudge = `The exploit test passed. Now output your findings in the exact report format: ===SOLHUNT_REPORT_START=== { JSON } ===SOLHUNT_REPORT_END===. Include found, vulnerability class/severity/functions/description, and exploit testFile/testPassed/valueAtRisk.`;
+        } else if (hasForgeError) {
+          nudge = `The forge test failed. Use str_replace_editor to fix the test file at test/Exploit.t.sol. Common fixes: import the contract with 'import "../src/test-contract.sol";', ensure correct function signatures. Then run forge_test again. Do NOT explain — just fix the file.`;
+        } else if (hasReadCode) {
+          nudge = `Good analysis. Now take action: use the str_replace_editor tool to create the exploit test file at test/Exploit.t.sol. Write the Solidity exploit code that demonstrates this vulnerability. Do NOT explain — use the tool to create the file.`;
+        } else {
+          nudge = `You have tools available. Use the bash tool to read the contract: bash with command 'cat /workspace/scan/src/*.sol'`;
+        }
 
         messages.push({ role: "user", content: nudge });
         continue;
