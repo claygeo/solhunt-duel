@@ -49,7 +49,7 @@ export interface ProviderConfig {
 export const PRESETS: Record<string, Omit<ProviderConfig, "model"> & { model: string }> = {
   "ollama": {
     provider: "ollama",
-    model: "deepseek-coder-v2:16b",
+    model: "qwen2.5-coder:32b",
     baseUrl: "http://localhost:11434/v1",
   },
   "ollama-small": {
@@ -60,6 +60,11 @@ export const PRESETS: Record<string, Omit<ProviderConfig, "model"> & { model: st
   "ollama-llama": {
     provider: "ollama",
     model: "llama3.1:8b",
+    baseUrl: "http://localhost:11434/v1",
+  },
+  "ollama-32b": {
+    provider: "ollama",
+    model: "qwen2.5-coder:32b",
     baseUrl: "http://localhost:11434/v1",
   },
   "openai": {
