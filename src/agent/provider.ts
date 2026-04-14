@@ -133,11 +133,21 @@ export async function chatCompletion(
     body.tool_choice = "auto";
   }
 
-  const response = await fetch(`${config.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  // Long timeout for slow local models (32B on CPU can take 5+ minutes per response)
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 600_000); // 10 min
+
+  let response;
+  try {
+    response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const text = await response.text();

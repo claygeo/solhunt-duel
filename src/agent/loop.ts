@@ -86,14 +86,22 @@ export async function runAgent(
     try {
       response = await chatCompletion(config.provider, messages, tools);
     } catch (err: any) {
-      return {
-        report: null,
-        rawOutput: lastTextOutput,
-        iterations,
-        cost: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
-        durationMs: Date.now() - startTime,
-        error: `API error: ${err.message}`,
-      };
+      // Retry once after a brief pause (handles transient connection issues)
+      console.error(`[iter ${iterations}] API error (retrying): ${err.message}`);
+      await new Promise(r => setTimeout(r, 5000));
+      try {
+        response = await chatCompletion(config.provider, messages, tools);
+      } catch (retryErr: any) {
+        console.error(`[iter ${iterations}] API error (fatal): ${retryErr.message}`);
+        return {
+          report: null,
+          rawOutput: lastTextOutput,
+          iterations,
+          cost: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+          durationMs: Date.now() - startTime,
+          error: `API error: ${retryErr.message}`,
+        };
+      }
     }
 
     totalInputTokens += response.usage.prompt_tokens;
