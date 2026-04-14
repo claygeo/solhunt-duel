@@ -57,6 +57,11 @@ export const PRESETS: Record<string, Omit<ProviderConfig, "model"> & { model: st
     model: "qwen2.5-coder:7b",
     baseUrl: "http://localhost:11434/v1",
   },
+  "ollama-llama": {
+    provider: "ollama",
+    model: "llama3.1:8b",
+    baseUrl: "http://localhost:11434/v1",
+  },
   "openai": {
     provider: "openai",
     model: "gpt-4o",
