@@ -17,15 +17,21 @@ export class ForkManager {
       ? `--fork-block-number ${config.blockNumber}`
       : "";
 
+    // If no fork URL or explicitly local, run anvil without forking
+    const forkFlag = config.rpcUrl
+      ? `--fork-url "${config.rpcUrl}" ${blockFlag}`
+      : "";
+
     // Start anvil in the background
     await this.sandbox.exec(
       containerId,
-      `nohup anvil --host 0.0.0.0 --fork-url "${config.rpcUrl}" ${blockFlag} --silent > /tmp/anvil.log 2>&1 &`,
+      `nohup anvil --host 0.0.0.0 ${forkFlag} --silent > /tmp/anvil.log 2>&1 &`,
       10_000
     );
 
-    // Wait for anvil to be ready
-    await this.waitForAnvil(containerId, 30_000);
+    // Forked mode needs longer to sync initial state from RPC
+    const timeout = forkFlag ? 120_000 : 30_000;
+    await this.waitForAnvil(containerId, timeout);
   }
 
   private async waitForAnvil(
