@@ -20,6 +20,11 @@ export function buildAnalysisPrompt(params: {
     .map((f) => `- src/${f.filename}`)
     .join("\n");
 
+  // Include source code directly in the prompt to reduce tool-use iterations
+  const sourceContents = params.sourceFiles
+    .map((f) => `### ${f.filename}\n\`\`\`solidity\n${f.content}\n\`\`\``)
+    .join("\n\n");
+
   return `## Target Contract
 
 **Address:** ${params.contractAddress}
@@ -27,10 +32,17 @@ export function buildAnalysisPrompt(params: {
 **Chain:** ${params.chain}
 **Block:** ${params.blockNumber ?? "latest"}
 
-The contract source code has been placed in the \`src/\` directory:
+The contract source code has been placed in \`/workspace/scan/src/\`:
 ${sourceList}
 
-The Anvil fork is running at \`http://localhost:8545\` with the ${params.chain} state at block ${params.blockNumber ?? "latest"}.
+${sourceContents}
 
-Begin your analysis. Read the source files, identify potential vulnerabilities, and attempt to write a working exploit.`;
+## Important Notes for Writing the Exploit Test
+
+1. Import the contract directly: \`import "../src/${params.sourceFiles[0]?.filename ?? "Contract.sol"}";\`
+2. Deploy a new instance in setUp(): \`target = new ${params.contractName}();\`
+3. Use \`vm.deal(address(this), 10 ether);\` to fund the attacker
+4. The test file goes at: \`/workspace/scan/test/Exploit.t.sol\`
+
+Begin your analysis. Identify vulnerabilities and write a working exploit test. Use the str_replace_editor tool to create the test file, then use forge_test to run it. If it fails, fix and retry.`;
 }

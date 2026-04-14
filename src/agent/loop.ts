@@ -148,7 +148,7 @@ export async function runAgent(
     // If no tool calls: nudge the model to use tools instead of explaining.
     // Local models often explain instead of acting.
     if (response.finish_reason !== "tool_calls" || !assistantMessage.tool_calls?.length) {
-      if (iterations <= 8) {
+      if (iterations <= 12) {
         messages.push({ role: "assistant", content: assistantMessage.content ?? "" });
 
         // Context-aware nudge based on what stage the agent is at
