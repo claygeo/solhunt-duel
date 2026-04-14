@@ -12,6 +12,7 @@ import { ForkManager } from "./sandbox/fork.js";
 import { FoundryProject } from "./sandbox/foundry.js";
 import { fetchContractSource } from "./ingestion/etherscan.js";
 import { runAgent } from "./agent/loop.js";
+import { resolveProvider, type ProviderConfig } from "./agent/provider.js";
 import { calculateCost } from "./reporter/format.js";
 import { renderReport, renderBenchmarkTable } from "./reporter/markdown.js";
 import type { ScanResult } from "./reporter/format.js";
@@ -26,23 +27,51 @@ program
   .description("Autonomous AI agent for smart contract vulnerability detection")
   .version("0.1.0");
 
+// Resolve provider config from CLI flags + env vars
+function buildProviderConfig(options: { provider?: string; model?: string }): ProviderConfig {
+  const providerName = options.provider ?? process.env.SOLHUNT_PROVIDER ?? "ollama";
+  const config = resolveProvider(providerName);
+
+  // Override model if specified
+  if (options.model) {
+    config.model = options.model;
+  }
+
+  // Inject API keys from env
+  if (config.provider === "anthropic") {
+    config.apiKey = process.env.ANTHROPIC_API_KEY;
+  } else if (config.provider === "openai") {
+    config.apiKey = process.env.OPENAI_API_KEY;
+  } else if (config.provider === "openrouter") {
+    config.apiKey = process.env.OPENROUTER_API_KEY;
+  }
+
+  // Validate API key for providers that need one
+  if (config.provider !== "ollama" && !config.apiKey) {
+    const envVar = {
+      anthropic: "ANTHROPIC_API_KEY",
+      openai: "OPENAI_API_KEY",
+      openrouter: "OPENROUTER_API_KEY",
+      custom: "API_KEY",
+    }[config.provider];
+    throw new Error(`${envVar} not set. Required for ${providerName} provider.`);
+  }
+
+  return config;
+}
+
 program
   .command("scan")
   .description("Scan a smart contract for vulnerabilities")
   .argument("<target>", "Contract address (0x...) or path to .sol file")
   .option("--chain <chain>", "Blockchain network", "ethereum")
   .option("--block <number>", "Block number for fork")
-  .option("--model <model>", "Claude model to use", process.env.SOLHUNT_MODEL ?? "claude-sonnet-4-6")
+  .option("--provider <name>", "Model provider (ollama, openai, openrouter, anthropic)", process.env.SOLHUNT_PROVIDER ?? "ollama")
+  .option("--model <model>", "Model to use (overrides provider default)")
   .option("--max-iterations <n>", "Max agent iterations", "30")
-  .option("--dry-run", "Show what would happen without calling Claude", false)
+  .option("--dry-run", "Show what would happen without calling the model", false)
   .option("--json", "Output as JSON", false)
   .action(async (target, options) => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      console.error(chalk.red("ANTHROPIC_API_KEY not set. Copy .env.example to .env and fill in your key."));
-      process.exit(1);
-    }
-
     const etherscanKey = process.env.ETHERSCAN_API_KEY;
     if (!etherscanKey && target.startsWith("0x")) {
       console.error(chalk.red("ETHERSCAN_API_KEY not set. Needed to fetch contract source."));
@@ -52,6 +81,14 @@ program
     const rpcUrl = process.env.ETH_RPC_URL;
     if (!rpcUrl) {
       console.error(chalk.red("ETH_RPC_URL not set. Need an RPC endpoint for blockchain forking."));
+      process.exit(1);
+    }
+
+    let providerConfig: ProviderConfig;
+    try {
+      providerConfig = buildProviderConfig(options);
+    } catch (err: any) {
+      console.error(chalk.red(err.message));
       process.exit(1);
     }
 
@@ -94,7 +131,8 @@ program
         console.log(`\nWould scan: ${contractName} (${target})`);
         console.log(`Chain: ${options.chain}`);
         console.log(`Block: ${options.block ?? "latest"}`);
-        console.log(`Model: ${options.model}`);
+        console.log(`Provider: ${providerConfig.provider}`);
+        console.log(`Model: ${providerConfig.model}`);
         console.log(`Source files: ${sources.map((s) => s.filename).join(", ")}`);
         return;
       }
@@ -129,7 +167,7 @@ program
       }
 
       // Run agent
-      spinner.text = "Agent analyzing contract...";
+      spinner.text = `Agent analyzing contract (${providerConfig.provider}/${providerConfig.model})...`;
       const agentResult = await runAgent(
         {
           address: target,
@@ -141,11 +179,10 @@ program
         containerId,
         sandbox,
         {
-          model: options.model,
+          provider: providerConfig,
           maxIterations: parseInt(options.maxIterations),
           toolTimeout: parseInt(process.env.SOLHUNT_TOOL_TIMEOUT ?? "60000"),
           scanTimeout: parseInt(process.env.SOLHUNT_SCAN_TIMEOUT ?? "1800000"),
-          apiKey,
         },
         (iter, tool) => {
           spinner.text = `Agent iteration ${iter}: ${tool}`;
@@ -162,7 +199,7 @@ program
           inputTokens: agentResult.cost.inputTokens,
           outputTokens: agentResult.cost.outputTokens,
           totalUSD: calculateCost(
-            options.model,
+            providerConfig.model,
             agentResult.cost.inputTokens,
             agentResult.cost.outputTokens
           ),
@@ -192,16 +229,24 @@ program
   .option("--dataset <path>", "Path to benchmark dataset JSON", "./benchmark/dataset.json")
   .option("--limit <n>", "Max contracts to test")
   .option("--concurrency <n>", "Parallel scans", "3")
-  .option("--model <model>", "Claude model", process.env.SOLHUNT_MODEL ?? "claude-sonnet-4-6")
+  .option("--provider <name>", "Model provider", process.env.SOLHUNT_PROVIDER ?? "ollama")
+  .option("--model <model>", "Model to use (overrides provider default)")
   .option("--output <path>", "Output results JSON path")
   .option("--json", "Output as JSON", false)
   .action(async (options) => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
     const etherscanKey = process.env.ETHERSCAN_API_KEY;
     const rpcUrl = process.env.ETH_RPC_URL;
 
-    if (!apiKey || !etherscanKey || !rpcUrl) {
-      console.error(chalk.red("Missing required env vars. Check .env file."));
+    if (!etherscanKey || !rpcUrl) {
+      console.error(chalk.red("Missing ETHERSCAN_API_KEY or ETH_RPC_URL. Check .env file."));
+      process.exit(1);
+    }
+
+    let providerConfig: ProviderConfig;
+    try {
+      providerConfig = buildProviderConfig(options);
+    } catch (err: any) {
+      console.error(chalk.red(err.message));
       process.exit(1);
     }
 
@@ -210,8 +255,7 @@ program
         datasetPath: options.dataset,
         limit: options.limit ? parseInt(options.limit) : undefined,
         concurrency: parseInt(options.concurrency),
-        model: options.model,
-        apiKey,
+        provider: providerConfig,
         etherscanKey,
         rpcUrl,
         outputPath: options.output,
@@ -233,9 +277,18 @@ program
   .description("Check if Docker and dependencies are ready")
   .action(async () => {
     const sandbox = new SandboxManager();
+    const providerName = process.env.SOLHUNT_PROVIDER ?? "ollama";
+
     const checks = [
       { name: "Docker", check: () => sandbox.healthCheck() },
-      { name: "ANTHROPIC_API_KEY", check: async () => !!process.env.ANTHROPIC_API_KEY },
+      { name: `Provider (${providerName})`, check: async () => {
+        try {
+          buildProviderConfig({ provider: providerName });
+          return true;
+        } catch {
+          return false;
+        }
+      }},
       { name: "ETHERSCAN_API_KEY", check: async () => !!process.env.ETHERSCAN_API_KEY },
       { name: "ETH_RPC_URL", check: async () => !!process.env.ETH_RPC_URL },
     ];

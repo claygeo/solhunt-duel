@@ -1,4 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  chatCompletion,
+  type ProviderConfig,
+  type Message,
+  type ToolDefinition,
+} from "./provider.js";
 import { getToolDefinitions } from "./tools.js";
 import { ToolExecutor } from "./executor.js";
 import { getSystemPrompt, buildAnalysisPrompt } from "./prompts.js";
@@ -6,11 +11,10 @@ import { SandboxManager } from "../sandbox/manager.js";
 import type { ExploitReport } from "../reporter/format.js";
 
 export interface AgentConfig {
-  model: string;
+  provider: ProviderConfig;
   maxIterations: number;
   toolTimeout: number;
   scanTimeout: number;
-  apiKey: string;
 }
 
 export interface ScanTarget {
@@ -40,7 +44,6 @@ export async function runAgent(
   config: AgentConfig,
   onIteration?: (iteration: number, toolName: string) => void
 ): Promise<AgentResult> {
-  const client = new Anthropic({ apiKey: config.apiKey });
   const executor = new ToolExecutor(sandbox, containerId, config.toolTimeout);
   const tools = getToolDefinitions();
   const systemPrompt = getSystemPrompt();
@@ -53,7 +56,8 @@ export async function runAgent(
     sourceFiles: target.sources,
   });
 
-  const messages: Anthropic.MessageParam[] = [
+  const messages: Message[] = [
+    { role: "system", content: systemPrompt },
     { role: "user", content: analysisPrompt },
   ];
 
@@ -78,15 +82,9 @@ export async function runAgent(
 
     iterations++;
 
-    let response: Anthropic.Message;
+    let response;
     try {
-      response = await client.messages.create({
-        model: config.model,
-        max_tokens: 16384,
-        system: systemPrompt,
-        tools: tools as any,
-        messages,
-      });
+      response = await chatCompletion(config.provider, messages, tools);
     } catch (err: any) {
       return {
         report: null,
@@ -98,36 +96,37 @@ export async function runAgent(
       };
     }
 
-    totalInputTokens += response.usage.input_tokens;
-    totalOutputTokens += response.usage.output_tokens;
+    totalInputTokens += response.usage.prompt_tokens;
+    totalOutputTokens += response.usage.completion_tokens;
 
-    // Collect text blocks and tool_use blocks
-    const textBlocks = response.content.filter(
-      (b): b is Anthropic.TextBlock => b.type === "text"
-    );
-    const toolUseBlocks = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
-    );
+    const assistantMessage = response.message;
 
-    if (textBlocks.length > 0) {
-      lastTextOutput = textBlocks.map((b) => b.text).join("\n");
+    if (assistantMessage.content) {
+      lastTextOutput = assistantMessage.content;
     }
 
-    // If stop_reason is "end_turn" (no more tool calls), we're done
-    if (response.stop_reason === "end_turn" || toolUseBlocks.length === 0) {
+    // If no tool calls, we're done
+    if (response.finish_reason !== "tool_calls" || !assistantMessage.tool_calls?.length) {
       break;
     }
 
-    // Add assistant message with all content blocks
-    messages.push({ role: "assistant", content: response.content });
+    // Add assistant message to history
+    messages.push(assistantMessage);
 
-    // Execute each tool call and collect results
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    // Execute each tool call and push results
+    for (const toolCall of assistantMessage.tool_calls) {
+      const toolName = toolCall.function.name;
+      let toolInput: any;
 
-    for (const toolUse of toolUseBlocks) {
-      onIteration?.(iterations, toolUse.name);
+      try {
+        toolInput = JSON.parse(toolCall.function.arguments);
+      } catch {
+        toolInput = { command: toolCall.function.arguments };
+      }
 
-      const result = await executor.execute(toolUse.name, toolUse.input);
+      onIteration?.(iterations, toolName);
+
+      const result = await executor.execute(toolName, toolInput);
 
       // Truncate very long outputs to avoid filling context
       let output = result.output;
@@ -138,15 +137,13 @@ export async function runAgent(
           output.slice(-25_000);
       }
 
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: toolUse.id,
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        name: toolName,
         content: output,
-        is_error: result.isError,
       });
     }
-
-    messages.push({ role: "user", content: toolResults });
   }
 
   // Parse the report from the final output

@@ -30,19 +30,28 @@ export interface ScanResult {
   error?: string;
 }
 
-// Claude API pricing (per 1M tokens)
+// API pricing (per 1M tokens). Ollama/local models are free.
 const PRICING: Record<string, { input: number; output: number }> = {
+  // Anthropic
   "claude-sonnet-4-6": { input: 3, output: 15 },
   "claude-opus-4-6": { input: 15, output: 75 },
   "claude-haiku-4-5-20251001": { input: 0.8, output: 4 },
+  // OpenAI
+  "gpt-4o": { input: 2.5, output: 10 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
+  // OpenRouter (same underlying models, pass-through pricing)
+  "anthropic/claude-sonnet-4": { input: 3, output: 15 },
 };
+
+// Default: free (Ollama, local models)
+const FREE = { input: 0, output: 0 };
 
 export function calculateCost(
   model: string,
   inputTokens: number,
   outputTokens: number
 ): number {
-  const price = PRICING[model] ?? PRICING["claude-sonnet-4-6"];
+  const price = PRICING[model] ?? FREE;
   return (
     (inputTokens / 1_000_000) * price.input +
     (outputTokens / 1_000_000) * price.output

@@ -9,6 +9,7 @@ import { fetchContractSource } from "../ingestion/etherscan.js";
 import { loadDataset, getChainId } from "../ingestion/defi-hacks.js";
 import { runAgent } from "../agent/loop.js";
 import { calculateCost, formatDuration } from "../reporter/format.js";
+import type { ProviderConfig } from "../agent/provider.js";
 import type { ScanResult } from "../reporter/format.js";
 import type { BenchmarkEntry } from "../ingestion/defi-hacks.js";
 
@@ -16,8 +17,7 @@ export interface BenchmarkConfig {
   datasetPath: string;
   limit?: number;
   concurrency: number;
-  model: string;
-  apiKey: string;
+  provider: ProviderConfig;
   etherscanKey: string;
   rpcUrl: string;
   outputPath?: string;
@@ -30,7 +30,8 @@ export async function runBenchmark(
   const entries = config.limit ? dataset.slice(0, config.limit) : dataset;
 
   console.log(chalk.bold(`\nBenchmark: ${entries.length} contracts`));
-  console.log(`Model: ${config.model}`);
+  console.log(`Provider: ${config.provider.provider}`);
+  console.log(`Model: ${config.provider.model}`);
   console.log(`Concurrency: ${config.concurrency}\n`);
 
   const results: ScanResult[] = [];
@@ -126,11 +127,10 @@ async function scanEntry(
       containerId,
       sandbox,
       {
-        model: config.model,
+        provider: config.provider,
         maxIterations: 30,
         toolTimeout: 60_000,
         scanTimeout: 1_800_000,
-        apiKey: config.apiKey,
       }
     );
 
@@ -141,7 +141,7 @@ async function scanEntry(
         inputTokens: agentResult.cost.inputTokens,
         outputTokens: agentResult.cost.outputTokens,
         totalUSD: calculateCost(
-          config.model,
+          config.provider.model,
           agentResult.cost.inputTokens,
           agentResult.cost.outputTokens
         ),

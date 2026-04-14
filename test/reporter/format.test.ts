@@ -20,9 +20,9 @@ describe("calculateCost", () => {
     expect(cost).toBeCloseTo(1.5);
   });
 
-  it("defaults to Sonnet pricing for unknown models", () => {
-    const cost = calculateCost("unknown-model", 1_000_000, 1_000_000);
-    expect(cost).toBe(3 + 15);
+  it("defaults to free pricing for unknown/local models", () => {
+    const cost = calculateCost("deepseek-coder-v2:16b", 1_000_000, 1_000_000);
+    expect(cost).toBe(0);
   });
 });
 
