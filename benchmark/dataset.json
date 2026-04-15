@@ -15,13 +15,13 @@
     "id": "price-manipulation-002",
     "name": "Saddle Finance",
     "chain": "ethereum",
-    "blockNumber": 14684305,
-    "contractAddress": "0x5f86558387293b6009d7896A61fcc86C17808D62",
+    "blockNumber": 14684306,
+    "contractAddress": "0x824dcD7b044D60df2e89B1bB888e66D8BCf41491",
     "vulnerabilityClass": "price-manipulation",
-    "description": "Price manipulation via flash loan. Used stale price/math library flaw in Saddle metapool to drain funds.",
+    "description": "SUSDMetaPoolUpdated used old MetaSwapUtils library with pricing bug (missing base virtual price for LP token swaps). Flash loan exploited mispricing.",
     "referenceExploit": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2022-04/Saddle_exp.sol",
     "date": "2022-04-30",
-    "valueImpacted": "~$11M"
+    "valueImpacted": "~$11.9M"
   },
   {
     "id": "price-manipulation-003",
