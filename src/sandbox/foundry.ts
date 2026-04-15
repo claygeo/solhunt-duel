@@ -26,7 +26,6 @@ export class FoundryProject {
 src = "src"
 out = "out"
 libs = ["lib"]
-solc_version = "0.8.20"
 evm_version = "shanghai"
 auto_detect_solc = true
 

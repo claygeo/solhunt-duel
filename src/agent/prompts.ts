@@ -45,22 +45,26 @@ export function buildAnalysisPrompt(params: {
 
   return `## Target Contract
 
-**Address:** ${params.contractAddress}
+**Address:** \`${params.contractAddress}\`
 **Name:** ${params.contractName}
 **Chain:** ${params.chain}
-**Block:** ${params.blockNumber ?? "latest"}
+**Fork Block:** ${params.blockNumber ?? "latest"}
 
-The contract source code has been placed in \`/workspace/scan/src/\`:
+The Anvil fork is running at \`http://localhost:8545\`. The contract is LIVE at its real address on the fork.
+
+Source code is in \`/workspace/scan/src/\`:
 ${sourceList}
 
 ${sourceContents}
 
-## Important Notes for Writing the Exploit Test
+## Your Plan
 
-1. Import the contract directly: \`import "../src/${params.sourceFiles[0]?.filename ?? "Contract.sol"}";\`
-2. Deploy a new instance in setUp(): \`target = new ${params.contractName}();\`
-3. Use \`vm.deal(address(this), 10 ether);\` to fund the attacker
-4. The test file goes at: \`/workspace/scan/test/Exploit.t.sol\`
+1. Read the source above. Identify the vulnerability class.
+2. Write \`test/Exploit.t.sol\` using an INTERFACE (not source imports) targeting the real address \`${params.contractAddress}\`.
+3. Run forge_test. If it fails, fix and retry.
+4. Output your report.
 
-Begin your analysis. Identify vulnerabilities and write a working exploit test. Use the str_replace_editor tool to create the test file, then use forge_test to run it. If it fails, fix and retry.`;
+**DO NOT deploy a new contract instance.** Use the existing one at \`${params.contractAddress}\` on the fork.
+**DO NOT import from src/.** Define a minimal interface in your test file.
+**Write code by iteration 4 at the latest.** Reading without writing is wasted budget.`;
 }

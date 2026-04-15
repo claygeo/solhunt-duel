@@ -168,14 +168,13 @@ export async function runAgent(
 
         let nudge: string;
         if (hasForgePass) {
-          // Test passed — ask for the structured report
           nudge = `The exploit test passed. Now output your findings in the exact report format: ===SOLHUNT_REPORT_START=== { JSON } ===SOLHUNT_REPORT_END===. Include found, vulnerability class/severity/functions/description, and exploit testFile/testPassed/valueAtRisk.`;
         } else if (hasForgeError) {
-          nudge = `The forge test failed. Use str_replace_editor to fix the test file at test/Exploit.t.sol. Common fixes: import the contract with 'import "../src/test-contract.sol";', ensure correct function signatures. Then run forge_test again. Do NOT explain — just fix the file.`;
+          nudge = `The forge test failed. Read the error carefully and use str_replace_editor to REWRITE test/Exploit.t.sol. Remember: use interfaces only (no src/ imports), pragma solidity ^0.8.20, and target the contract at its real address on the fork. Do NOT explain — just fix the file and run forge_test again.`;
         } else if (hasReadCode) {
-          nudge = `Good analysis. Now take action: use the str_replace_editor tool to create the exploit test file at test/Exploit.t.sol. Write the Solidity exploit code that demonstrates this vulnerability. Do NOT explain — use the tool to create the file.`;
+          nudge = `STOP READING. You have enough context. Write the exploit NOW. Use str_replace_editor to create test/Exploit.t.sol with a minimal interface targeting the real contract address on the fork. Do NOT import from src/. Do NOT run more cast commands. WRITE THE TEST.`;
         } else {
-          nudge = `You have tools available. Use the bash tool to read the contract: bash with command 'cat /workspace/scan/src/*.sol'`;
+          nudge = `Use bash to list files: ls src/ — then read the main contract. You have limited iterations, so read quickly and write the exploit test early.`;
         }
 
         messages.push({ role: "user", content: nudge });
@@ -227,11 +226,38 @@ export async function runAgent(
       .slice(-3)
       .map(m => m.tool_calls![0].function.name);
     if (lastToolCalls.length >= 3 && lastToolCalls.every(n => n === "forge_test")) {
-      // Force the model to fix the code instead of re-running tests
       messages.push(assistantMessage);
       messages.push({
         role: "user",
-        content: "STOP re-running the same test. The test keeps failing. Use str_replace_editor with command='create' to rewrite test/Exploit.t.sol with a DIFFERENT approach. Fix the compilation or logic errors. You MUST use the str_replace_editor tool, not explain.",
+        content: "STOP re-running the same test. The test keeps failing. Use str_replace_editor with command='create' to rewrite test/Exploit.t.sol with a DIFFERENT approach. Use interfaces (not src/ imports), pragma ^0.8.20, and target the real contract address on the fork.",
+      });
+      continue;
+    }
+
+    // Detect agent spending too long reading without writing code
+    const hasWrittenTest = messages.some(m =>
+      m.role === "tool" && m.name === "str_replace_editor" &&
+      m.content?.includes("Exploit.t.sol")
+    );
+    if (iterations >= 8 && !hasWrittenTest) {
+      messages.push(assistantMessage);
+      // Execute the current tool calls first
+      for (const toolCall of assistantMessage.tool_calls) {
+        const toolName = toolCall.function.name;
+        let toolInput: any;
+        try { toolInput = JSON.parse(toolCall.function.arguments); }
+        catch { toolInput = { command: toolCall.function.arguments }; }
+        onIteration?.(iterations, toolName);
+        const result = await executor.execute(toolName, toolInput);
+        let output = result.output;
+        if (output.length > 50_000) {
+          output = output.slice(0, 25_000) + "\n\n... [truncated] ...\n\n" + output.slice(-25_000);
+        }
+        messages.push({ role: "tool", tool_call_id: toolCall.id, name: toolName, content: output });
+      }
+      messages.push({
+        role: "user",
+        content: "WARNING: You have used 8 iterations without writing an exploit test. You are running out of budget. IMMEDIATELY write test/Exploit.t.sol using str_replace_editor. Use an interface-only approach (no src/ imports). Target the real contract address on the fork. If you're unsure about the vulnerability, write a test for your best guess. A failing test is better than no test.",
       });
       continue;
     }
