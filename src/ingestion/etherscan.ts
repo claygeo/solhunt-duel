@@ -79,14 +79,13 @@ export async function fetchContractSource(
 }
 
 // Strip common path prefixes from Etherscan source filenames
-// e.g., "contracts/src/Curve.sol" → "Curve.sol"
-//        "src/interfaces/IFoo.sol" → "interfaces/IFoo.sol"
+// Only strip "contracts/" and "src/" since those are Hardhat/Foundry conventions
+// that would double-nest in our src/ directory.
+// Do NOT strip "lib/" — contracts may import from "./lib/..." relative paths.
 function normalizeSourcePath(filename: string): string {
-  // Strip common prefixes that would cause double-nesting in our src/ directory
   return filename
     .replace(/^contracts\//, "")
-    .replace(/^src\//, "")
-    .replace(/^lib\//, "");
+    .replace(/^src\//, "");
 }
 
 function parseSourceCode(
