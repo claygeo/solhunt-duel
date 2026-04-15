@@ -147,7 +147,7 @@ export class ToolExecutor {
     try {
       const result = await this.sandbox.exec(
         this.containerId,
-        `cd /workspace/scan && forge test ${matchPath} ${matchFn} ${vFlag} 2>&1`,
+        `cd /workspace/scan && forge test ${matchPath} ${matchFn} ${vFlag} --fork-url http://localhost:8545 2>&1`,
         300_000 // 5 min
       );
 

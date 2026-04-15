@@ -145,9 +145,13 @@ export async function runAgent(
       lastTextOutput = assistantMessage.content;
     }
 
-    // If no tool calls: nudge the model to use tools instead of explaining.
-    // Local models often explain instead of acting.
+    // If no tool calls: check if the model already produced the report, otherwise nudge.
     if (response.finish_reason !== "tool_calls" || !assistantMessage.tool_calls?.length) {
+      // If the response contains the report markers, we're done — don't nudge
+      if (lastTextOutput.includes("===SOLHUNT_REPORT_START===")) {
+        break;
+      }
+
       if (iterations <= 12) {
         messages.push({ role: "assistant", content: assistantMessage.content ?? "" });
 

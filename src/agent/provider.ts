@@ -1,6 +1,15 @@
 // Model-agnostic provider abstraction using OpenAI-compatible API format.
 // Supports: Ollama (local), OpenRouter, Together, Groq, OpenAI, Anthropic (via proxy).
 
+import { Agent as UndiciAgent, setGlobalDispatcher } from "undici";
+
+// Override Node.js fetch's default 5-minute headersTimeout (kills slow local models)
+setGlobalDispatcher(new UndiciAgent({
+  headersTimeout: 600_000,    // 10 minutes
+  bodyTimeout: 600_000,       // 10 minutes
+  connectTimeout: 30_000,     // 30 seconds
+}));
+
 export interface Message {
   role: "system" | "user" | "assistant" | "tool";
   content?: string;
@@ -67,6 +76,11 @@ export const PRESETS: Record<string, Omit<ProviderConfig, "model"> & { model: st
     model: "qwen2.5-coder:32b-8k",
     baseUrl: "http://localhost:11434/v1",
   },
+  "ollama-qwen35": {
+    provider: "ollama",
+    model: "qwen3.5:27b",
+    baseUrl: "http://localhost:11434/v1",
+  },
   "openai": {
     provider: "openai",
     model: "gpt-4o",
@@ -121,9 +135,25 @@ export async function chatCompletion(
     headers["X-Title"] = "solhunt";
   }
 
+  // Disable thinking/reasoning for Qwen3.5 models (saves ~2-3min per call on CPU)
+  const isQwen35 = config.model.includes("qwen3.5");
+  const formattedMessages = messages.map(formatMessage);
+  if (isQwen35) {
+    // Append /no_think to the last user message to disable reasoning mode
+    for (let i = formattedMessages.length - 1; i >= 0; i--) {
+      if (formattedMessages[i].role === "user") {
+        const content = formattedMessages[i].content;
+        if (typeof content === "string" && !content.includes("/no_think")) {
+          formattedMessages[i] = { ...formattedMessages[i], content: content + " /no_think" };
+        }
+        break;
+      }
+    }
+  }
+
   const body: Record<string, any> = {
     model: config.model,
-    messages: messages.map(formatMessage),
+    messages: formattedMessages,
     max_tokens: config.maxTokens ?? 16384,
     temperature: 0,
   };
