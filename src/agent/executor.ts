@@ -227,16 +227,12 @@ function toChecksumAddress(address: string): string {
 
 /**
  * Find all Ethereum addresses in Solidity source and apply EIP-55 checksums.
- * Matches 0x followed by 40 hex chars that aren't already checksummed.
+ * Always recomputes - catches both lowercase-only and incorrectly-checksummed addresses.
+ * LLMs sometimes generate plausible-looking mixed-case addresses with the wrong EIP-55.
  */
 function fixSolidityChecksums(source: string): string {
   return source.replace(/0x([0-9a-fA-F]{40})\b/g, (match) => {
-    // Skip if already has mixed case (likely already checksummed)
-    const hex = match.slice(2);
-    const hasUpper = /[A-F]/.test(hex);
-    const hasLower = /[a-f]/.test(hex);
-    if (hasUpper && hasLower) return match; // Already mixed case, leave it
-    // All lowercase or all uppercase: needs checksum
-    return toChecksumAddress(match);
+    const correct = toChecksumAddress(match);
+    return correct;
   });
 }

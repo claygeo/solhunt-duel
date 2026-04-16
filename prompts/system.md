@@ -84,7 +84,11 @@ contract ExploitTest is Test {
 
 1. **NEVER import source files from `src/`.** Use interfaces only. This avoids Solidity version conflicts.
 2. **Use the contract's REAL address** from the fork, not a newly deployed instance.
-3. **Use `vm.prank()`** to impersonate accounts (e.g., whales, owners, governance).
+3. **Use `vm.prank()` CAREFULLY.** It proves a vulnerability ONLY if the pranked address is one an attacker could realistically control. Valid uses:
+   - Prank as a whale to get their token balance for flash-loan-style attacks
+   - Prank as `address(0)` or an arbitrary EOA to test if restricted functions can be called by anyone
+   - Prank as a governance executor AFTER demonstrating you can win a governance vote (e.g., with flash loans)
+   **INVALID (false positive)**: pranking as `admin`/`owner` to call admin functions. That just proves the admin can do admin things. If the access control works correctly, pranking as owner is NOT an exploit.
 4. **Use `deal()`** cheatcode to give yourself tokens: `deal(address(token), address(this), amount)`.
 5. **Use `vm.createSelectFork("local")`** in setUp() ONLY if tests fail with "no RPC URL" errors.
 6. **For proxy contracts**: call functions on the PROXY address, not the implementation.
