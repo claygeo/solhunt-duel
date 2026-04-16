@@ -1,0 +1,86 @@
+# Solhunt v2 Session Log - 2026-04-16
+
+Autonomous session: improving agent + scaling dataset toward 100-contract benchmark.
+
+## What Shipped
+
+### Agent Intelligence (commits ba5b6a4, 20cb58d, e7e9c9d, 939674a)
+- **Smart context trimming** in `src/agent/loop.ts`: forge_test output preserved up to 5KB, error-containing messages up to 2KB, verbose output at 300 chars. Previously blind 200-char truncation was killing error messages the agent needed.
+- **Flash loan interfaces** in `prompts/system.md`: concrete Aave V2, Uniswap V2, dYdX interfaces baked into the system prompt.
+- **EIP-55 address auto-checksum** in `src/agent/executor.ts`: uses js-sha3 keccak256. Always recomputes (LLMs can emit incorrectly-mixed-case addresses).
+- **vm.prank false-positive guard** in `prompts/system.md`: explicit rules on valid vs invalid uses of `vm.prank`. Prevents `vm.prank(admin)` → "found exploit" hallucinations.
+- **Source limit 30K→50K** in `src/agent/prompts.ts` with multi-file inclusion.
+- **Structural pattern detection** in prompts: auto-detects flash-loan, delegatecall, proxy patterns in source and hints them to the agent.
+
+### Sandbox (commit e7e9c9d)
+Added to Dockerfile:
+- OpenZeppelin upgradeable (proxies)
+- Uniswap V2/V3 periphery (flash swaps)
+- Aave V3 core (flash loans)
+- Compound protocol (Comptroller/CToken)
+- OZ v4 legacy already present
+
+### Dataset Expansion
+- **`scripts/import-defihacklabs.ts`**: clones/parses DeFiHackLabs repo, extracts 661 exploits, filters to 104 Ethereum entries with all required fields.
+- **`scripts/curate-dataset.ts`**: dedupes against existing, balances by class, produces `benchmark/dataset-100.json` (95 contracts).
+
+### Analysis Tooling
+- **`scripts/compare-runs.ts`**: Supabase query showing before/after exploit results, iteration/cost deltas, regressions.
+- **`scripts/check-supabase.ts`**: quick data quality checks.
+
+## Measurement (Sonnet, 3-contract baseline)
+
+| Contract | Before agent upgrades | After | Signal |
+|---|---|---|---|
+| Beanstalk | ✓ 2m26s / $0.84 / 16 iter | ✓ 1m44s / $0.65 / 11 iter | IMPROVED (faster, cheaper) |
+| Saddle Finance | FALSE POS (reported "price-manipulation", was bogus) / $2.83 | ✗ correctly NOT FOUND / $2.14 | IMPROVED (less hallucination) |
+| Inverse Finance | ✗ $0.43 | FALSE POS (vm.prank admin) / $0.72 | NEW FALSE POSITIVE → fix shipped in 939674a, validation pending |
+
+**Net:** Detection rate unchanged at 1/3, but quality of both successes and failures is higher. Speed/cost improved on the working case.
+
+## Remaining Blockers (for high-value contracts)
+
+**Saddle Finance-class exploits** (MetaSwapUtils pricing bug with LP token virtual price):
+- OpenZeppelin import mismatches in old Solidity source
+- `deal()` cheatcode fails on tokens with non-standard storage layouts
+- Fundamental: exploit requires orchestrating flash loans across multiple protocols. Our sandbox + agent aren't there yet.
+
+**Inverse Finance-class** (Oracle manipulation via Curve pool):
+- Requires precise Curve protocol interaction
+- Need flash loan to move pool price
+- Same orchestration challenge
+
+These are "Phase 3 sandbox work" - not agent-intelligence issues.
+
+## Outside Voice Calibration
+
+Called an outside voice before scaling. Key takeaway: "stop optimizing for motion over information." Before that call, I was going to run 5 new unseen contracts. Instead we re-ran the 3 baseline contracts, which gave us actual signal about what our changes did.
+
+Specifically: **the controlled A/B (same contracts, old agent vs new agent) revealed signal that running 5 new contracts would not have.**
+
+## What's Next (when budget allows)
+
+1. **Validate vm.prank fix** on Inverse Finance (running now, ~$0.72). If fix works → false positive becomes correct NOT FOUND.
+2. **Deeper sandbox work** for Saddle/Inverse-class exploits. This is the real bottleneck. Requires:
+   - Solidity version bridging (0.6-0.8 compat)
+   - Better token balance cheatcodes (workaround for `deal()` failures)
+   - Possibly a "script mode" where the agent writes a standalone attacker contract instead of fighting with source imports
+3. **Scale to 100** (Phase 3). Requires ~$89 budget for Sonnet + ~$35 for Qwen/GPT-4o comparisons. Dataset is ready.
+
+## Key Files
+
+- `benchmark/dataset-100.json` - 95 curated contracts, class-balanced, ready for flagship run
+- `benchmark/imported.json` - 104 raw DeFiHackLabs imports
+- `prompts/system.md` - agent system prompt with all guidance
+- `src/agent/loop.ts` - agent loop with smart trimming
+- `src/agent/executor.ts` - tool executor with checksum auto-fix
+- `Dockerfile` - sandbox with full DeFi lib set
+
+## Current Budget
+
+OpenRouter: ~$3.06 remaining (after baseline experiment + validation run).
+Next large spend: flagship 100-contract Sonnet run (~$89, needs user to load more).
+
+## Supabase
+
+All runs persist to Supabase (project: xogipstirlipvoaabbid). Tables: contracts, scan_runs, benchmark_runs, tool_calls. Artifacts in `solhunt-artifacts` bucket.
