@@ -80,6 +80,21 @@ contract ExploitTest is Test {
 }
 ```
 
+### If Forge Won't Compile Your Test
+
+Common issue: Forge tries to compile `src/` (the target contract source) along with your test. If `src/` uses old Solidity (0.6.x, 0.7.x) with dependencies you don't have, compilation fails BEFORE your test can even run.
+
+**Standard workaround (use this FIRST if you hit Solidity version errors):**
+
+```bash
+mv src src_backup   # hide src from forge's compilation
+forge test --match-path test/Exploit.t.sol -vvv --fork-url http://localhost:8545
+```
+
+Your test file uses ONLY interfaces so it compiles independently. After the test runs you can rename src back if needed. This saves 5-10 wasted iterations fighting compile errors in files you don't need compiled.
+
+**To read source**: use `cat src_backup/SomeFile.sol` instead of str_replace_editor view.
+
 ### Key Rules for the Exploit Test
 
 1. **NEVER import source files from `src/`.** Use interfaces only. This avoids Solidity version conflicts.
