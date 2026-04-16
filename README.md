@@ -6,35 +6,7 @@ No human in the loop. The agent reads code, reasons about attack vectors, writes
 
 ## Benchmark Results
 
-### Phase 3: Multi-model benchmark (2026-04, current)
-
-Tested across **45 real DeFi exploits** using Claude Sonnet 4 + Qwen3.5-35B-A3B.
-
-| Metric | Value |
-|---|---|
-| **Validated exploit rate** | **33%** (15/45 contracts) |
-| **Total cost** | **$16.56** |
-| **Human-equivalent audit cost** | $450K - 2.25M |
-| **Cheapest exploit** | $0.07 (Inverse Finance, Qwen) |
-| **Fastest exploit** | 1m 31s (Inverse Finance, Qwen) |
-| **Marquee exploit** | Beanstalk ($182M): 1m 44s / $0.65 (Sonnet) |
-
-**Per-class breakdown:**
-
-| Class | Tested | Exploited | Rate |
-|---|---|---|---|
-| flash-loan | 2 | 1 | 50.0% |
-| price-manipulation | 12 | 6 | 50.0% |
-| reentrancy | 6 | 2 | 33.3% |
-| access-control | 13 | 4 | 30.8% |
-| logic-error | 10 | 2 | 20.0% |
-| integer-overflow | 2 | 0 | 0.0% |
-
-**Model split:**
-- Qwen3.5-35B-A3B handles cheap access-control exploits ($0.07-0.15 each)
-- Claude Sonnet 4 handles complex reentrancy + proxy patterns ($0.65-3.25 each)
-
-### Phase 1: Original Sonnet-only baseline (2026-03)
+### Phase 1: Original Sonnet baseline (curated 32-contract set)
 
 Original 32-contract baseline from curated DeFiHackLabs set.
 
@@ -98,6 +70,40 @@ For reference, [Anthropic's research team (SCONE-bench)](https://red.anthropic.c
 | 31 | KyberSwap Elastic | logic-error | ~$46M | EXPLOITED | $1.97 |
 
 </details>
+
+### Phase 3: Expanded multi-model benchmark (April 2026)
+
+After expanding the dataset to 95 contracts via [DeFiHackLabs](https://github.com/SunWeb3Sec/DeFiHackLabs) import, ran a multi-model benchmark on Claude Sonnet 4 + Qwen3.5-35B-A3B.
+
+**Key finding: detection rate drops significantly on a non-curated dataset.** The original 32-contract benchmark was implicitly cherry-picked for contracts with good source code and clear attack vectors. A random sample from DeFiHackLabs includes:
+- Unverified contracts (no source available on Etherscan)
+- Multi-protocol exploits requiring cross-contract orchestration
+- BSC/Arbitrum contracts mislabeled in the import
+- Complex proxy patterns beyond current sandbox capability
+
+**Qwen3.5-35B-A3B pre-flight (47 scans ran to completion):**
+
+| Metric | Value |
+|---|---|
+| Validated exploits | **6 (12.8%)** |
+| Total cost | $7.76 |
+| Cost per validated exploit | $1.29 |
+
+All 6 Qwen wins were access-control or simple reentrancy at $0.07-$0.15 each. Qwen does not currently handle complex proxy or flash-loan exploits.
+
+**Sonnet targeted (6 scans on Qwen-failed candidates):**
+
+| Metric | Value |
+|---|---|
+| Validated exploits | **1 (DFX Finance reentrancy)** |
+| Cost for the win | $3.25 |
+| Cost for 5 failures | $6.05 |
+
+The 5 Sonnet failures were contracts requiring multi-protocol flash loans and non-standard token balance manipulation. Our sandbox doesn't currently expose cheatcodes for those.
+
+**Honest assessment:** The 67.7% rate on the curated set doesn't generalize. On a random sample, detection drops to ~13%. The curated number reflects "what this agent CAN do when the contract is approachable." The expanded number reflects "what it does against arbitrary exploits."
+
+Both are honest. Different questions.
 
 ## How It Works
 

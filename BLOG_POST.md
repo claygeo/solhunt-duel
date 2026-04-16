@@ -1,6 +1,8 @@
 # I Built an Autonomous AI Agent That Finds DeFi Exploits. Here's What Happened.
 
-Across 45 known DeFi hacks, my agent autonomously found and proved **15 exploits (33%)** for a total cost of **$16.56** across two models (Claude Sonnet 4 and Qwen3.5-35B-A3B). Human-equivalent audit cost: ~$450K+.
+Started from an original 32-contract benchmark at **67.7% exploit rate on curated DeFi hacks** ($28.64 total, Claude Sonnet 4). Expanded to a 95-contract multi-model test including unverified and complex exploits - detection rate dropped to ~13% on the random sample. Honest about both numbers.
+
+The real result: **a working autonomous agent that proved 21 real exploits** including Beanstalk ($182M historical hack, solved in 1m 44s for $0.65).
 
 ## The Pitch (30 seconds)
 
@@ -91,39 +93,68 @@ Result: 95-contract class-balanced dataset:
 
 Each contract has: address, fork block, vulnerability class, historical loss amount, reference exploit URL.
 
-## Phase 3: The Multi-Model Benchmark
+## Phase 3: The Multi-Model Benchmark (and the honesty problem)
 
-Ran Qwen3.5-35B-A3B across a 45-contract subset (circuit breaker fired at budget cap). Then ran Claude Sonnet 4 on a curated list of "hard failure" candidates Qwen couldn't crack. Combined results:
+I want to show you two numbers because only one of them is the "LinkedIn headline" kind.
 
-**45 unique contracts. 15 validated exploits. 33% detection rate. $16.56 total.**
+### Number 1: 67.7% on 32 curated contracts (Sonnet)
 
-### Per-Class Breakdown
+The original benchmark. 32 well-known DeFi exploits from DeFiHackLabs, all with verified source. 21/31 exploited (one failed due to Etherscan). $28.64 total. Above Anthropic SCONE-bench's 51.1%.
 
-| Vulnerability Class | Tested | Exploited | Rate |
-|---|---|---|---|
-| flash-loan | 2 | 1 | 50.0% |
-| price-manipulation | 12 | 6 | 50.0% |
-| reentrancy | 6 | 2 | 33.3% |
-| access-control | 13 | 4 | 30.8% |
-| logic-error | 10 | 2 | 20.0% |
-| integer-overflow | 2 | 0 | 0.0% |
+This is the "good vibes" number. Real but cherry-picked.
 
-### The Interesting Splits
+### Number 2: 13% on a random 95-contract import
 
-**Qwen3.5 sweet spot:** Cheap access-control exploits. 6 of the 15 exploits came from Qwen at $0.07-0.15 each. For contracts with a clear access-control flaw (forgotten admin function, unrestricted initializer), the small MoE model crushes it.
+I imported 95 contracts from DeFiHackLabs to scale the benchmark. Ran Qwen3.5-35B-A3B as a cheap pre-flight, then Sonnet on hard candidates.
 
-**Sonnet's premium:** Complex reentrancy. DFX Finance was the standout - Sonnet proved the `flash()` function's CEI violation in 19 iterations for $3.25. Qwen couldn't get this one past max iterations.
+**Qwen3.5 pre-flight (47 scans completed):**
+- 6 validated exploits (12.8%)
+- $7.76 cost
+- All were access-control at $0.07-0.15 each
 
-**Where both failed:** Integer-overflow (0/2). These require arithmetic insight neither model brought. Also: most logic-errors (80% failed). These bugs live in multi-protocol interactions that neither model's sandbox navigates well.
+**Sonnet targeted on Qwen's failures (6 scans):**
+- 1 validated exploit (DFX Finance, reentrancy)
+- $3.25 for the win, $6.05 for the 5 failures
+
+**Combined: ~13% on a random sample.**
+
+### Why the huge gap?
+
+The original 32-contract set was implicitly cherry-picked. Every contract had:
+- Verified source on Etherscan
+- Single-contract attack vectors (no multi-protocol flash loans)
+- Standard token balance behavior (`deal()` cheatcode works)
+
+The expanded 95-contract set includes:
+- 10+ contracts without verified source (immediate fail)
+- Multi-protocol flash loan exploits (Nomad, Euler) - our sandbox can't orchestrate these
+- Proxy patterns with non-standard storage - `deal()` fails
+- Some contracts from BSC/Arbitrum mislabeled as Ethereum
+
+The drop from 68% to 13% isn't a regression in the model. It's the dataset revealing what the current sandbox can't handle.
+
+### What this actually tells us
+
+The agent is **working as designed** for a specific class of problems:
+- Access control flaws
+- Simple reentrancy
+- Known attack patterns in single-contract code
+
+It is **not yet** a general-purpose DeFi security tool. It can't:
+- Orchestrate multi-protocol flash loans end-to-end
+- Manipulate non-standard token balances (ERC4626 vaults, etc.)
+- Reason about economic invariants across protocols
+
+Both are true. The 67.7% is "what it can do when the stars align." The 13% is "what happens when you throw real-world complexity at it."
 
 ### Cost vs Human Audit
 
-| Approach | Cost for 45 contracts | Time |
+| Approach | Cost for 31 contracts | Time |
 |---|---|---|
-| Human auditor (Trail of Bits, OpenZeppelin tier) | $450K–2.25M | 3-9 months |
-| solhunt (Qwen + Sonnet combined) | $16.56 | ~5 hours |
+| Human auditor (Trail of Bits tier) | $310K–1.55M | 2-6 months |
+| solhunt (Sonnet, curated set) | $28.64 | ~1 hour |
 
-~27,000x cheaper. Worse detection rate (humans still find things we miss), but this isn't a replacement for human audit - it's a first-pass screen.
+Still 10,000-50,000x cheaper when it works. Less useful when the contract is beyond the sandbox. Knowing the boundary is the product.
 
 ## What I Learned
 
