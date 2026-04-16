@@ -106,52 +106,78 @@ function normalizeChain(raw: string): string | null {
 }
 
 /**
- * Parse the main README.md for exploit entries.
- * Format varies but we look for markdown headings with date+protocol+vuln pattern.
+ * Parse a year README (past/YYYY/README.md) for exploit entries.
+ * Format is a series of sections like:
+ *   ### 20220416 BeanstalkFarms - DAO + Flashloan
+ *   #### Lost: $182 million
+ *   ...
+ *   [Beanstalk_exp.sol](../../src/test/2022-04/Beanstalk_exp.sol)
  */
-function parseReadme(readmeContent: string): ParsedExploit[] {
+function parseYearReadme(readmeContent: string, yearReadmePath: string): ParsedExploit[] {
   const exploits: ParsedExploit[] = [];
-  const lines = readmeContent.split("\n");
 
-  // Heuristic: look for table rows like:
-  // | 20220430 | Saddle | Price Manipulation | $11.9M | [test](...) |
-  // Or markdown links: [YYYYMMDD Protocol - VulnType](src/test/YYYY-MM/Protocol_exp.sol)
-  const linkRegex = /\[(\d{8})\s+(.+?)\s*-\s*(.+?)\]\(([^)]+)\)/;
-  const tableRegex = /\|\s*(\d{8})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/;
+  // Section headings: ### YYYYMMDD Name - VulnType
+  // Split the content into sections by ### headings
+  const sections = readmeContent.split(/\n###\s+/);
 
-  for (const line of lines) {
-    const linkMatch = line.match(linkRegex);
+  for (const section of sections.slice(1)) {
+    const firstLine = section.split("\n")[0];
+    // Match: "YYYYMMDD Name - VulnType" (with optional stuff)
+    const headingMatch = firstLine.match(/^(\d{8})\s+(.+?)\s*(?:-\s*(.+?))?\s*$/);
+    if (!headingMatch) continue;
+
+    const [, dateRaw, name, vulnTypeRaw] = headingMatch;
+    if (!vulnTypeRaw) continue;
+
+    // Find Lost amount
+    const lostMatch = section.match(/####\s+Lost:\s*(.+)/i);
+    const loss = lostMatch ? lostMatch[1].trim() : "unknown";
+
+    // Find the test file link - either as markdown link or as forge test path
+    // Patterns:
+    //   [Beanstalk_exp.sol](../../src/test/2022-04/Beanstalk_exp.sol)
+    //   forge test --contracts ./src/test/2022-04/Beanstalk_exp.sol
+    let testPath: string | null = null;
+    const linkMatch = section.match(/\[[\w_]+_exp\.sol\]\(([^)]+)\)/);
     if (linkMatch) {
-      const [, dateRaw, name, vulnType, path] = linkMatch;
-      const testPath = path.startsWith("./") ? path.slice(2) : path;
-      exploits.push({
-        date: formatDate(dateRaw),
-        name: name.trim(),
-        vulnType: vulnType.trim(),
-        loss: "unknown",
-        testPath: testPath.replace(/^https:\/\/github\.com\/[^/]+\/[^/]+\/blob\/[^/]+\//, ""),
-      });
-      continue;
-    }
-
-    const tableMatch = line.match(tableRegex);
-    if (tableMatch) {
-      const [, dateRaw, name, vulnType, loss] = tableMatch;
-      // Try to find a link to the test file in the same line
-      const linkInRow = line.match(/\(([^)]+_exp\.sol)\)/);
-      if (linkInRow) {
-        exploits.push({
-          date: formatDate(dateRaw),
-          name: name.trim(),
-          vulnType: vulnType.trim(),
-          loss: loss.trim(),
-          testPath: linkInRow[1].replace(/^\.\//, ""),
-        });
+      testPath = linkMatch[1];
+    } else {
+      const forgeMatch = section.match(/forge\s+test[^\n]*?(\.\/src\/test\/\S+_exp\.sol)/);
+      if (forgeMatch) {
+        testPath = forgeMatch[1];
       }
     }
+    if (!testPath) continue;
+
+    // Resolve relative path. Year README is at past/YYYY/README.md, so
+    // ../../src/test/... resolves to src/test/...
+    testPath = testPath.replace(/^\.\.\/\.\.\//, "").replace(/^\.\//, "");
+
+    exploits.push({
+      date: formatDate(dateRaw),
+      name: name.trim(),
+      vulnType: vulnTypeRaw.trim(),
+      loss,
+      testPath,
+    });
   }
 
   return exploits;
+}
+
+/**
+ * Find all per-year README files (past/YYYY/README.md) plus root README details.
+ */
+function findYearReadmes(repoPath: string): string[] {
+  const pastDir = join(repoPath, "past");
+  const results: string[] = [];
+  if (existsSync(pastDir)) {
+    for (const entry of readdirSync(pastDir)) {
+      const candidate = join(pastDir, entry, "README.md");
+      if (existsSync(candidate)) results.push(candidate);
+    }
+  }
+  return results;
 }
 
 function formatDate(yyyymmdd: string): string {
@@ -274,16 +300,21 @@ async function main() {
     process.exit(1);
   }
 
-  const readmePath = join(repoPath, "README.md");
-  if (!existsSync(readmePath)) {
-    console.error(`README.md not found at ${readmePath}`);
+  const yearReadmes = findYearReadmes(repoPath);
+  if (yearReadmes.length === 0) {
+    console.error(`No past/YYYY/README.md files found in ${repoPath}`);
     process.exit(1);
   }
+  console.log(`Found ${yearReadmes.length} year READMEs: ${yearReadmes.map(r => basename(r.replace("/README.md", ""))).join(", ")}`);
 
-  console.log(`Parsing ${readmePath}...`);
-  const readmeContent = readFileSync(readmePath, "utf-8");
-  const exploits = parseReadme(readmeContent);
-  console.log(`Found ${exploits.length} exploits in README`);
+  const exploits: ParsedExploit[] = [];
+  for (const readmePath of yearReadmes) {
+    const content = readFileSync(readmePath, "utf-8");
+    const parsed = parseYearReadme(content, readmePath);
+    console.log(`  ${basename(readmePath.replace("/README.md", ""))}: ${parsed.length} exploits`);
+    exploits.push(...parsed);
+  }
+  console.log(`Total: ${exploits.length} exploits across all years`);
 
   const entries: DatasetEntry[] = [];
   const skipped: { name: string; reason: string }[] = [];
