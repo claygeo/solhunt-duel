@@ -1,5 +1,6 @@
 import { SandboxManager } from "../sandbox/manager.js";
-import { keccak256 } from "js-sha3";
+import jsSha3 from "js-sha3";
+const { keccak256 } = jsSha3;
 
 const WORKDIR = "/workspace/scan";
 
