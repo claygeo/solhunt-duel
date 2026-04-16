@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { SandboxManager } from "./sandbox/manager.js";
 import { ForkManager } from "./sandbox/fork.js";
 import { FoundryProject } from "./sandbox/foundry.js";
+import { runPreScanRecon, formatReconForPrompt } from "./sandbox/recon.js";
 import { fetchContractSource } from "./ingestion/etherscan.js";
 import { runAgent } from "./agent/loop.js";
 import { resolveProvider, type ProviderConfig } from "./agent/provider.js";
@@ -177,6 +178,22 @@ program
         spinner.warn("Contract has compilation warnings (proceeding anyway)");
       }
 
+      // Pre-scan recon: gather contract state to seed the agent prompt
+      let reconData: string | undefined;
+      if (target.startsWith("0x")) {
+        spinner.text = "Running pre-scan reconnaissance...";
+        try {
+          const recon = await runPreScanRecon(sandbox, containerId, target);
+          reconData = formatReconForPrompt(recon);
+          if (recon.rawResults.length > 0) {
+            spinner.text = `Recon found ${recon.rawResults.length} data points`;
+          }
+        } catch (err: any) {
+          // Non-fatal: agent can still discover state manually
+          console.error(`Recon failed (non-fatal): ${err.message}`);
+        }
+      }
+
       // Run agent
       spinner.text = `Agent analyzing contract (${providerConfig.provider}/${providerConfig.model})...`;
       const agentResult = await runAgent(
@@ -186,6 +203,7 @@ program
           chain: options.chain,
           blockNumber: options.block ? parseInt(options.block) : undefined,
           sources,
+          reconData,
         },
         containerId,
         sandbox,

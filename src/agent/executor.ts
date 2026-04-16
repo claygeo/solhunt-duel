@@ -95,7 +95,17 @@ export class ToolExecutor {
           // Create parent directories if needed
           const dir = resolvedInput.path.substring(0, resolvedInput.path.lastIndexOf("/"));
           await this.sandbox.exec(this.containerId, `mkdir -p "${dir}"`);
-          await this.sandbox.writeFile(this.containerId, resolvedInput.path, resolvedInput.file_text);
+          // Sanitize file content: fix common model formatting issues
+          let fileText = resolvedInput.file_text;
+          // Remove leading/trailing whitespace
+          fileText = fileText.trim();
+          // Fix double-escaped newlines (\\n → \n) that some models produce
+          fileText = fileText.replace(/\\n/g, "\n");
+          // Fix double-escaped tabs
+          fileText = fileText.replace(/\\t/g, "\t");
+          // Remove stray leading backslashes
+          fileText = fileText.replace(/^\\/m, "");
+          await this.sandbox.writeFile(this.containerId, resolvedInput.path, fileText);
           return { output: `File created: ${resolvedInput.path}`, isError: false };
         }
 

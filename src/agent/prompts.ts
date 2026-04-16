@@ -15,6 +15,7 @@ export function buildAnalysisPrompt(params: {
   chain: string;
   blockNumber?: number;
   sourceFiles: { filename: string; content: string }[];
+  reconData?: string;
 }): string {
   const sourceList = params.sourceFiles
     .map((f) => `- src/${f.filename}`)
@@ -43,6 +44,8 @@ export function buildAnalysisPrompt(params: {
       (otherFiles ? `### Other source files (use read_file or bash to inspect):\n${otherFiles}` : "");
   }
 
+  const reconSection = params.reconData ? `\n${params.reconData}\n` : "";
+
   return `## Target Contract
 
 **Address:** \`${params.contractAddress}\`
@@ -56,7 +59,7 @@ Source code is in \`/workspace/scan/src/\`:
 ${sourceList}
 
 ${sourceContents}
-
+${reconSection}
 ## Your Plan
 
 1. Read the source above. Identify the vulnerability class.

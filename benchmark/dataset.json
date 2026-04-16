@@ -325,15 +325,15 @@
   },
   {
     "id": "access-control-028",
-    "name": "Shezmu Protocol",
+    "name": "Poly Network (LockProxy)",
     "chain": "ethereum",
-    "blockNumber": 20794864,
-    "contractAddress": "0x641249dB01d5C9a04d1A223765fFd15f95167924",
+    "blockNumber": 12996658,
+    "contractAddress": "0x250e76987d838a75310c34bf422ea9f1AC4Cc906",
     "vulnerabilityClass": "access-control",
-    "description": "Unprotected mintWithCollateral() function. The ShezmuVault's minting function lacked access control, allowing anyone to mint ShezUSD stablecoin by providing worthless collateral tokens.",
-    "referenceExploit": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2024-09/Shezmu_exp.sol",
-    "date": "2024-09-20",
-    "valueImpacted": "~$4.9M"
+    "description": "Cross-chain relay key manipulation. Attacker crafted a transaction to change the keeper of the EthCrossChainData contract via verifyHeaderAndExecuteTx(), gaining control to unlock arbitrary tokens from the LockProxy.",
+    "referenceExploit": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2021-08/PolyNetwork_exp.sol",
+    "date": "2021-08-10",
+    "valueImpacted": "~$611M"
   },
   {
     "id": "price-manipulation-029",
@@ -361,15 +361,15 @@
   },
   {
     "id": "reentrancy-031",
-    "name": "Cream Finance (AMP)",
+    "name": "Rari Capital Fuse",
     "chain": "ethereum",
-    "blockNumber": 13042881,
-    "contractAddress": "0xA8Df7B6D7b64d9C5B5e0bC52A251C68C5CEc2C4B",
+    "blockNumber": 14684813,
+    "contractAddress": "0xe16db319d9da7ce40b666dd2e365a4b8b3c18217",
     "vulnerabilityClass": "reentrancy",
-    "description": "ERC-777 reentrancy attack on Cream Finance. AMP token implements ERC-777 tokensToSend hook, enabling reentrancy during borrow before collateral balance is updated. Attacker flash-loaned and recursively borrowed.",
-    "referenceExploit": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2021-08/Cream_exp.sol",
-    "date": "2021-08-30",
-    "valueImpacted": "~$18.8M"
+    "description": "Compound fork reentrancy via CEther. Attacker exploited reentrancy in the exitMarket/borrow flow — raw ETH transfer callback allowed re-entering before collateral was released, enabling double-borrow across Fuse pools.",
+    "referenceExploit": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2022-04/RariCapital_exp.sol",
+    "date": "2022-04-30",
+    "valueImpacted": "~$80M"
   },
   {
     "id": "logic-error-032",

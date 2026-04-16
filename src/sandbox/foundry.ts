@@ -62,6 +62,7 @@ runs = 256
     const skipPrefixes = ["forge-std/"];
 
     for (const source of sources) {
+      if (!source.filename || !source.content) continue;
       if (skipPrefixes.some(p => source.filename.startsWith(p))) continue;
 
       // All source files go into src/ at their given paths

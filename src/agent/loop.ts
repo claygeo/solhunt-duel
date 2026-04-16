@@ -23,6 +23,7 @@ export interface ScanTarget {
   chain: string;
   blockNumber?: number;
   sources: { filename: string; content: string }[];
+  reconData?: string;
 }
 
 export interface AgentResult {
@@ -54,6 +55,7 @@ export async function runAgent(
     chain: target.chain,
     blockNumber: target.blockNumber,
     sourceFiles: target.sources,
+    reconData: target.reconData,
   });
 
   const messages: Message[] = [
@@ -152,35 +154,47 @@ export async function runAgent(
         break;
       }
 
-      if (iterations <= 12) {
-        messages.push({ role: "assistant", content: assistantMessage.content ?? "" });
+      const iterationsLeft = config.maxIterations - iterations;
 
-        // Context-aware nudge based on what stage the agent is at
-        const hasReadCode = messages.some(m =>
-          m.role === "tool" && m.content?.includes("pragma solidity")
-        );
-        const hasForgeError = messages.some(m =>
-          m.role === "tool" && m.name === "forge_test" && (m.content?.includes("Error") || m.content?.includes("FAIL"))
-        );
+      // Near the end (last 3 iterations) with no report: force it
+      if (iterationsLeft <= 3) {
+        messages.push({ role: "assistant", content: assistantMessage.content || "(no output)" });
         const hasForgePass = messages.some(m =>
           m.role === "tool" && m.name === "forge_test" && m.content?.includes("PASS")
         );
-
-        let nudge: string;
-        if (hasForgePass) {
-          nudge = `The exploit test passed. Now output your findings in the exact report format: ===SOLHUNT_REPORT_START=== { JSON } ===SOLHUNT_REPORT_END===. Include found, vulnerability class/severity/functions/description, and exploit testFile/testPassed/valueAtRisk.`;
-        } else if (hasForgeError) {
-          nudge = `The forge test failed. Read the error carefully and use str_replace_editor to REWRITE test/Exploit.t.sol. Remember: use interfaces only (no src/ imports), pragma solidity ^0.8.20, and target the contract at its real address on the fork. Do NOT explain — just fix the file and run forge_test again.`;
-        } else if (hasReadCode) {
-          nudge = `STOP READING. You have enough context. Write the exploit NOW. Use str_replace_editor to create test/Exploit.t.sol with a minimal interface targeting the real contract address on the fork. Do NOT import from src/. Do NOT run more cast commands. WRITE THE TEST.`;
-        } else {
-          nudge = `Use bash to list files: ls src/ — then read the main contract. You have limited iterations, so read quickly and write the exploit test early.`;
-        }
-
-        messages.push({ role: "user", content: nudge });
+        const reportNudge = hasForgePass
+          ? `FINAL ITERATION. Your exploit test PASSED. You MUST now output your structured report. Do NOT call any more tools. Output ONLY this format:\n\n===SOLHUNT_REPORT_START===\n{ "found": true, "vulnerability": { "class": "...", "severity": "...", "functions": [...], "description": "..." }, "exploit": { "testFile": "test/Exploit.t.sol", "testPassed": true, "valueAtRisk": "..." } }\n===SOLHUNT_REPORT_END===`
+          : `FINAL ITERATION. You MUST now output your findings report. Do NOT call any more tools. Output ONLY this format:\n\n===SOLHUNT_REPORT_START===\n{ "found": false, "vulnerability": { "class": "...", "severity": "...", "functions": [...], "description": "Describe what you analyzed and why exploitation was not possible" }, "exploit": { "testFile": "", "testPassed": false, "valueAtRisk": "unknown" } }\n===SOLHUNT_REPORT_END===`;
+        messages.push({ role: "user", content: reportNudge });
         continue;
       }
-      break;
+
+      // Still have budget: context-aware nudge
+      messages.push({ role: "assistant", content: assistantMessage.content || "(no output)" });
+
+      const hasReadCode = messages.some(m =>
+        m.role === "tool" && m.content?.includes("pragma solidity")
+      );
+      const hasForgeError = messages.some(m =>
+        m.role === "tool" && m.name === "forge_test" && (m.content?.includes("Error") || m.content?.includes("FAIL"))
+      );
+      const hasForgePass = messages.some(m =>
+        m.role === "tool" && m.name === "forge_test" && m.content?.includes("PASS")
+      );
+
+      let nudge: string;
+      if (hasForgePass) {
+        nudge = `The exploit test passed. Now output your findings in the exact report format: ===SOLHUNT_REPORT_START=== { JSON } ===SOLHUNT_REPORT_END===. Include found, vulnerability class/severity/functions/description, and exploit testFile/testPassed/valueAtRisk.`;
+      } else if (hasForgeError) {
+        nudge = `The forge test failed. Read the error carefully and use str_replace_editor to REWRITE test/Exploit.t.sol. Remember: use interfaces only (no src/ imports), pragma solidity ^0.8.20, and target the contract at its real address on the fork. Do NOT explain — just fix the file and run forge_test again.`;
+      } else if (hasReadCode) {
+        nudge = `STOP READING. You have enough context. Write the exploit NOW. Use str_replace_editor to create test/Exploit.t.sol with a minimal interface targeting the real contract address on the fork. Do NOT import from src/. Do NOT run more cast commands. WRITE THE TEST.`;
+      } else {
+        nudge = `Use bash to list files: ls src/ — then read the main contract. You have limited iterations, so read quickly and write the exploit test early.`;
+      }
+
+      messages.push({ role: "user", content: nudge });
+      continue;
     }
 
     // Force report when approaching max iterations.

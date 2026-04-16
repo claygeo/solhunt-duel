@@ -58,6 +58,11 @@ export async function fetchContractSource(
 
   const result = data.result[0];
 
+  // Guard against non-object result (e.g. rate limit returning a string)
+  if (typeof result !== "object" || result === null) {
+    throw new Error(`Etherscan API returned unexpected result type: ${typeof result}`);
+  }
+
   if (!result.SourceCode || result.SourceCode === "") {
     throw new Error(`Contract ${address} is not verified on Etherscan`);
   }

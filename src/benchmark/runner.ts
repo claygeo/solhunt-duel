@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { SandboxManager } from "../sandbox/manager.js";
 import { ForkManager } from "../sandbox/fork.js";
 import { FoundryProject } from "../sandbox/foundry.js";
+import { runPreScanRecon, formatReconForPrompt } from "../sandbox/recon.js";
 import { fetchContractSource } from "../ingestion/etherscan.js";
 import { loadDataset, getChainId } from "../ingestion/defi-hacks.js";
 import { runAgent } from "../agent/loop.js";
@@ -134,6 +135,15 @@ async function scanEntry(
       blockNumber: entry.blockNumber,
     });
 
+    // Pre-scan recon
+    let reconData: string | undefined;
+    try {
+      const recon = await runPreScanRecon(sandbox, containerId, entry.contractAddress);
+      reconData = formatReconForPrompt(recon);
+    } catch {
+      // Non-fatal
+    }
+
     // Run agent
     const agentResult = await runAgent(
       {
@@ -142,6 +152,7 @@ async function scanEntry(
         chain: entry.chain,
         blockNumber: entry.blockNumber,
         sources: contractInfo.sources,
+        reconData,
       },
       containerId,
       sandbox,

@@ -137,7 +137,26 @@ export async function chatCompletion(
 
   // Disable thinking/reasoning for Qwen3.5 models (saves ~2-3min per call on CPU)
   const isQwen35 = config.model.includes("qwen3.5");
-  const formattedMessages = messages.map(formatMessage);
+  let formattedMessages = messages.map(formatMessage);
+
+  // Gemini requires every message to have non-empty content.
+  // Strip any messages with null/empty/whitespace-only content.
+  const isGemini = config.model.includes("gemini");
+  if (isGemini) {
+    formattedMessages = formattedMessages.filter(m => {
+      // Keep all messages but ensure content is non-empty
+      if (!m.content || (typeof m.content === "string" && !m.content.trim())) {
+        if (m.tool_calls) {
+          m.content = "Calling tool.";
+        } else if (m.tool_call_id) {
+          m.content = "(empty result)";
+        } else {
+          m.content = ".";
+        }
+      }
+      return true;
+    });
+  }
   if (isQwen35) {
     // Append /no_think to the last user message to disable reasoning mode
     for (let i = formattedMessages.length - 1; i >= 0; i--) {
@@ -213,25 +232,28 @@ export async function chatCompletion(
   };
 }
 
+// Known tool names for text-based tool call detection
+const KNOWN_TOOLS = ["bash", "str_replace_editor", "read_file", "forge_test"];
+
 // Attempt to parse a tool call from model text output.
-// Handles: {"name": "bash", "arguments": {"command": "ls"}}
-// and: {"name": "bash", "parameters": {"command": "ls"}}
+// Handles multiple formats:
+//   1. JSON: {"name": "bash", "arguments": {"command": "ls"}}
+//   2. Markdown code block with JSON
+//   3. Python-style: bash(command="ls -la")
+//   4. Markdown-style: ```\nbash(command="ls")\n```
+//   5. Gemini-style: tool_name(key='value', key2='value2')
 function tryParseToolCallFromContent(content: string): ToolCall | null {
-  // Strategy: try multiple extraction methods since local models can produce
-  // tool calls in various formats, sometimes followed by garbage tokens.
   const candidates: string[] = [];
 
-  // 1. Try markdown code block extraction
+  // 1. Try markdown code block extraction (JSON inside code blocks)
   const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch?.[1]) {
     candidates.push(codeBlockMatch[1].trim());
   }
 
-  // 2. Try extracting first JSON object from content (handles trailing garbage
-  //    like <|im_start|> tokens that Qwen models sometimes produce)
+  // 2. Try extracting first JSON object with "name" key
   const jsonObjMatch = content.match(/\{[\s\S]*?"name"\s*:\s*"[^"]+"/);
   if (jsonObjMatch) {
-    // Found start of a JSON object with "name" key. Now find the matching closing brace.
     const startIdx = jsonObjMatch.index!;
     let depth = 0;
     let endIdx = startIdx;
@@ -253,6 +275,7 @@ function tryParseToolCallFromContent(content: string): ToolCall | null {
   // 3. Try the full content as-is
   candidates.push(content.trim());
 
+  // Try JSON-based parsing first
   for (const text of candidates) {
     try {
       const parsed = JSON.parse(text);
@@ -272,19 +295,128 @@ function tryParseToolCallFromContent(content: string): ToolCall | null {
     }
   }
 
+  // 4. Try Python/Gemini function-call syntax: tool_name(key="value", key2='value2')
+  //    Models like Gemini Flash write tool calls as text in this format.
+  //    Also handles code blocks containing tool calls.
+  for (const toolName of KNOWN_TOOLS) {
+    // Match tool_name( ... ) allowing multi-line content
+    const startPattern = new RegExp(`${toolName}\\s*\\(`);
+    const startMatch = content.match(startPattern);
+    if (startMatch) {
+      const startIdx = startMatch.index! + startMatch[0].length;
+      // Find matching closing paren (handle nested parens)
+      let depth = 1;
+      let endIdx = startIdx;
+      for (let i = startIdx; i < content.length && depth > 0; i++) {
+        if (content[i] === '(') depth++;
+        else if (content[i] === ')') {
+          depth--;
+          if (depth === 0) endIdx = i;
+        }
+      }
+      if (depth === 0) {
+        const argsStr = content.slice(startIdx, endIdx).trim();
+        const args = parsePythonArgs(argsStr);
+        if (args && Object.keys(args).length > 0) {
+          return {
+            id: `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            type: "function",
+            function: {
+              name: toolName,
+              arguments: JSON.stringify(args),
+            },
+          };
+        }
+      }
+    }
+  }
+
   return null;
 }
 
-function formatMessage(msg: Message): any {
-  const formatted: any = { role: msg.role, content: msg.content ?? "" };
+// Parse Python-style keyword arguments: key="value", key2='value2', key3=123
+// Handles multi-line string values (for file contents with Solidity code).
+function parsePythonArgs(argsStr: string): Record<string, any> | null {
+  const result: Record<string, any> = {};
 
-  if (msg.tool_calls) {
-    formatted.tool_calls = msg.tool_calls;
+  // For multi-line content (like file_text with Solidity), we need a stateful parser
+  let i = 0;
+  while (i < argsStr.length) {
+    // Skip whitespace and commas
+    while (i < argsStr.length && /[\s,]/.test(argsStr[i])) i++;
+    if (i >= argsStr.length) break;
+
+    // Read key
+    const keyMatch = argsStr.slice(i).match(/^(\w+)\s*=\s*/);
+    if (!keyMatch) { i++; continue; }
+    const key = keyMatch[1];
+    i += keyMatch[0].length;
+
+    // Read value
+    if (i >= argsStr.length) break;
+
+    if (argsStr[i] === '"' || argsStr[i] === "'") {
+      // Quoted string - find matching close quote (handle multi-line)
+      const quote = argsStr[i];
+      i++; // skip opening quote
+      let value = "";
+      while (i < argsStr.length) {
+        if (argsStr[i] === '\\' && i + 1 < argsStr.length) {
+          // Handle escape sequences
+          const next = argsStr[i + 1];
+          if (next === 'n') { value += '\n'; i += 2; }
+          else if (next === 't') { value += '\t'; i += 2; }
+          else if (next === '\\') { value += '\\'; i += 2; }
+          else if (next === quote) { value += quote; i += 2; }
+          else { value += argsStr[i + 1]; i += 2; }
+        } else if (argsStr[i] === quote) {
+          i++; // skip closing quote
+          break;
+        } else {
+          value += argsStr[i];
+          i++;
+        }
+      }
+      result[key] = value;
+    } else if (/\d/.test(argsStr[i])) {
+      // Number
+      const numMatch = argsStr.slice(i).match(/^(\d+(?:\.\d+)?)/);
+      if (numMatch) {
+        result[key] = Number(numMatch[1]);
+        i += numMatch[0].length;
+      }
+    } else if (argsStr.slice(i).startsWith("True") || argsStr.slice(i).startsWith("true")) {
+      result[key] = true;
+      i += 4;
+    } else if (argsStr.slice(i).startsWith("False") || argsStr.slice(i).startsWith("false")) {
+      result[key] = false;
+      i += 5;
+    } else {
+      i++; // skip unknown character
+    }
   }
 
-  if (msg.tool_call_id) {
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+function formatMessage(msg: Message): any {
+  // Gemini API rejects empty content fields. Handle each message type carefully.
+  const formatted: any = { role: msg.role };
+
+  if (msg.tool_calls && msg.tool_calls.length > 0) {
+    // Assistant message with tool calls
+    formatted.tool_calls = msg.tool_calls;
+    // Gemini requires non-empty content in all message parts.
+    // Use the actual content if available, otherwise a placeholder.
+    formatted.content = (msg.content && msg.content.trim()) ? msg.content : "Calling tool.";
+  } else if (msg.tool_call_id) {
+    // Tool result message
     formatted.tool_call_id = msg.tool_call_id;
     formatted.name = msg.name;
+    formatted.content = msg.content || "(empty result)";
+  } else {
+    // Regular message (system, user, or assistant text)
+    formatted.content = msg.content || "(no content)";
   }
 
   return formatted;
@@ -304,7 +436,9 @@ async function anthropicCompletion(
   const systemMsg = messages.find((m) => m.role === "system");
   const nonSystemMsgs = messages.filter((m) => m.role !== "system");
 
-  const anthropicMessages = nonSystemMsgs.map((msg) => {
+  // Convert messages, then merge consecutive same-role messages.
+  // Anthropic requires strict user/assistant alternation.
+  const rawAnthropicMessages = nonSystemMsgs.map((msg) => {
     if (msg.role === "tool") {
       return {
         role: "user" as const,
@@ -319,14 +453,22 @@ async function anthropicCompletion(
     }
 
     if (msg.tool_calls) {
-      return {
-        role: "assistant" as const,
-        content: msg.tool_calls.map((tc) => ({
+      const blocks: any[] = [];
+      // Include text content if present (Anthropic supports mixed content blocks)
+      if (msg.content && msg.content.trim()) {
+        blocks.push({ type: "text" as const, text: msg.content });
+      }
+      for (const tc of msg.tool_calls) {
+        blocks.push({
           type: "tool_use" as const,
           id: tc.id,
           name: tc.function.name,
           input: JSON.parse(tc.function.arguments),
-        })),
+        });
+      }
+      return {
+        role: "assistant" as const,
+        content: blocks,
       };
     }
 
@@ -335,6 +477,24 @@ async function anthropicCompletion(
       content: msg.content ?? "",
     };
   });
+
+  // Merge consecutive same-role messages (Anthropic requires strict alternation)
+  const anthropicMessages: any[] = [];
+  for (const msg of rawAnthropicMessages) {
+    const prev = anthropicMessages[anthropicMessages.length - 1];
+    if (prev && prev.role === msg.role) {
+      // Merge: convert both to content arrays and concatenate
+      const prevBlocks = Array.isArray(prev.content)
+        ? prev.content
+        : [{ type: "text", text: prev.content }];
+      const newBlocks = Array.isArray(msg.content)
+        ? msg.content
+        : [{ type: "text", text: msg.content }];
+      prev.content = [...prevBlocks, ...newBlocks];
+    } else {
+      anthropicMessages.push({ ...msg });
+    }
+  }
 
   // Convert tools to Anthropic format
   const anthropicTools = tools?.map((t) => ({

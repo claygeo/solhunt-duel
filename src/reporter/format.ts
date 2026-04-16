@@ -41,6 +41,9 @@ const PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
   // OpenRouter (same underlying models, pass-through pricing)
   "anthropic/claude-sonnet-4": { input: 3, output: 15 },
+  "anthropic/claude-sonnet-4-6": { input: 3, output: 15 },
+  // Gemini (very cheap, used for infrastructure testing)
+  "google/gemini-2.0-flash-001": { input: 0.1, output: 0.4 },
 };
 
 // Default: free (Ollama, local models)
