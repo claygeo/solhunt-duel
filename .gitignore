@@ -1,6 +1,29 @@
 node_modules/
 dist/
+build/
+.next/
+out/
+
+# Env
 .env
+.env.local
+.env.*.local
+
+# Ephemeral benchmark/run outputs
 benchmark/results/*.json
 benchmark/results/*.md
+
+# Logs
+*.log
 *.tgz
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Docker mount dirs / container leakage
+staging/
+/workspace/
+
+# Next.js type cache
+tsconfig.tsbuildinfo

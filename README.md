@@ -1,8 +1,12 @@
-# solhunt
+# solhunt-duel
 
-Autonomous AI agent that finds and exploits smart contract vulnerabilities. Give it a contract address, and it forks the blockchain, analyzes the source code, writes a Solidity exploit test, executes it, and produces a structured vulnerability report.
+Autonomous Red-vs-Blue adversarial agents for smart contract security. Red finds and exploits vulnerabilities; Blue hardens the contract and re-runs Red to verify the patch holds. Full convergence, no human in the loop.
 
-No human in the loop. The agent reads code, reasons about attack vectors, writes Solidity, runs `forge test`, reads compiler errors, fixes its own code, and iterates until the exploit passes or it runs out of attempts.
+Give it a contract address and solhunt-duel will: fork mainnet, read the source, write a working Solidity exploit, execute it, then (Blue) patch the contract, re-deploy the patched version, and re-run the Red attack against the patched artifact. If Red still wins, Blue iterates. Full audit report at the end.
+
+**Live progress:** https://solhunt-duel.netlify.app (placeholder — the Phase 3 UI deploy is in flight)
+
+Below: the original solhunt numbers (Red-only baseline) plus the new **Duel results** from the first end-to-end convergence run.
 
 ## Benchmark Results
 
@@ -104,6 +108,20 @@ The 5 Sonnet failures were contracts requiring multi-protocol flash loans and no
 **Honest assessment:** The 67.7% rate on the curated set doesn't generalize. On a random sample, detection drops to ~13%. The curated number reflects "what this agent CAN do when the contract is approachable." The expanded number reflects "what it does against arbitrary exploits."
 
 Both are honest. Different questions.
+
+## Duel results (Phase 2 centerpiece)
+
+First end-to-end Red-vs-Blue convergence. Run ID: `16af8d22-1b78-48e8-acf6-e720bfa05e12`. Target: Dexible access-control exploit.
+
+| Round | Agent | Wall time | Turns | Notional moved | Outcome |
+|---|---|---|---|---|---|
+| R1 | Red | 41.8s | 8 | $0.25 | autonomous pivot to proxy-takeover; exploit passed |
+| R1 | Blue | 551s (9m11s) | 80 | $3.78 | **all 4 gates green** (compiles, tests pass, Red fails, no regressions) |
+| R2 | Red | 277s (4m37s) | 23 | $1.24 | honest "nothing found" against Blue's patch |
+
+**Convergence:** hardened. Total wall time 17.6 min. Total notional $5.27. **Real API bill: $0** (Max subscription via `claude -p` subprocess).
+
+Red pivoted on its own in R1 from the obvious access-control surface to a proxy-takeover path — no prompt engineering, it just read the code and chose. Blue's 80-turn defense was verbose but all four verification gates hit green. Most important: R2 Red ran the same attack loop against the patched contract and came back empty-handed without hallucinating a false positive. That's the trust test the duel exists to answer.
 
 ## How It Works
 
@@ -274,6 +292,18 @@ docker build -t solhunt-sandbox .
 Builds from `ghcr.io/foundry-rs/foundry:latest` with pre-installed DeFi dependencies (OpenZeppelin, Uniswap V2/V3, Chainlink). ~2 minutes first build, cached after.
 
 ## Usage
+
+### Reproduce the Dexible duel
+
+```bash
+# Make sure .env has ETH_RPC_URL, ETHERSCAN_API_KEY, and SOLHUNT_PROVIDER=claude-cli (Max subscription)
+npx tsx src/index.ts duel 0x24F58C49066a5bC3358Ee5075deE00B6Db5C9e40 \
+  --chain ethereum \
+  --block 17968639 \
+  --run-id 16af8d22-1b78-48e8-acf6-e720bfa05e12
+```
+
+That regenerates the R1 Red → R1 Blue → R2 Red cycle end to end. With the Max subscription provider the API bill is $0. Expect ~17-18 minutes wall time.
 
 ### Scan a contract
 
