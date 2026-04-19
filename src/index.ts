@@ -5,12 +5,14 @@ import chalk from "chalk";
 import ora from "ora";
 import dotenv from "dotenv";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { resolve as pathResolve, relative as pathRelative, join as pathJoin } from "node:path";
 
 import { SandboxManager } from "./sandbox/manager.js";
 import { ForkManager } from "./sandbox/fork.js";
 import { FoundryProject } from "./sandbox/foundry.js";
 import { runPreScanRecon, formatReconForPrompt } from "./sandbox/recon.js";
+import { cloneBytecodeInContainer } from "./sandbox/clone-bytecode.js";
 import { fetchContractSource } from "./ingestion/etherscan.js";
 import { runAgent } from "./agent/loop.js";
 import { resolveProvider, type ProviderConfig } from "./agent/provider.js";
@@ -72,11 +74,15 @@ program
   .option("--provider <name>", "Model provider (ollama, openai, openrouter, anthropic)", process.env.SOLHUNT_PROVIDER ?? "ollama")
   .option("--model <model>", "Model to use (overrides provider default)")
   .option("--max-iterations <n>", "Max agent iterations", "30")
+  .option("--source-file <path>", "Override Etherscan source fetch with a local .sol file or directory of .sol files. Target address stays as passed (enables scanning fresh-address redeployments).")
+  .option("--contract-name <name>", "Contract name to use when --source-file is supplied (defaults to file basename)")
+  .option("--redeploy-from <address>", "After anvil starts, clone the runtime bytecode + storage from <address> onto the <target> (fresh) address inside the sandbox's private anvil. Enables fresh-address duels where Claude never sees the original verified mainnet address. Requires --block for a pinned fork.")
   .option("--dry-run", "Show what would happen without calling the model", false)
   .option("--json", "Output as JSON", false)
   .action(async (target, options) => {
     const etherscanKey = process.env.ETHERSCAN_API_KEY;
-    if (!etherscanKey && target.startsWith("0x")) {
+    const useLocalSource = !!options.sourceFile;
+    if (!etherscanKey && target.startsWith("0x") && !useLocalSource) {
       console.error(chalk.red("ETHERSCAN_API_KEY not set. Needed to fetch contract source."));
       process.exit(1);
     }
@@ -113,7 +119,40 @@ program
       let sources: { filename: string; content: string }[];
       let contractName: string;
 
-      if (target.startsWith("0x")) {
+      if (useLocalSource) {
+        // --source-file overrides Etherscan. Target is still the (fresh) address.
+        const srcPath = pathResolve(options.sourceFile);
+        spinner.text = `Loading local source from ${srcPath}...`;
+        const st = statSync(srcPath);
+        if (st.isDirectory()) {
+          const walked: { filename: string; content: string }[] = [];
+          const walk = (dir: string) => {
+            for (const entry of readdirSync(dir)) {
+              const full = pathJoin(dir, entry);
+              const s = statSync(full);
+              if (s.isDirectory()) walk(full);
+              else if (entry.endsWith(".sol")) {
+                walked.push({
+                  filename: pathRelative(srcPath, full).replace(/\\/g, "/"),
+                  content: readFileSync(full, "utf-8"),
+                });
+              }
+            }
+          };
+          walk(srcPath);
+          if (walked.length === 0) {
+            throw new Error(`No .sol files found under ${srcPath}`);
+          }
+          sources = walked;
+        } else {
+          const content = readFileSync(srcPath, "utf-8");
+          const filename = srcPath.split(/[/\\]/).pop() ?? "Contract.sol";
+          sources = [{ filename, content }];
+        }
+        contractName =
+          options.contractName ??
+          (sources[0].filename.replace(/\.sol$/, "").split("/").pop() || "Contract");
+      } else if (target.startsWith("0x")) {
         spinner.text = `Fetching contract source from Etherscan...`;
         const info = await fetchContractSource(target, etherscanKey!, 1);
         sources = info.sources;
@@ -171,6 +210,37 @@ program
           chain: options.chain,
           rpcUrl: "", // empty = no fork
         });
+      }
+
+      // Fresh-address redeploy (for duel flows where Claude must not see the
+      // real mainnet address). Clones bytecode + storage slots from the
+      // original address onto `target` inside the container's private anvil —
+      // the same anvil Claude's forge wrapper + the authoritative
+      // exploit-harness-cli both hit. Without this, fresh-mode scans fail
+      // because the redeploy lives in a different anvil than the harness.
+      if (options.redeployFrom && target.startsWith("0x")) {
+        spinner.text = `Cloning bytecode from ${options.redeployFrom} onto ${target}...`;
+        console.error(`[redeploy] cloning ${options.redeployFrom} -> ${target} via container ${containerId.slice(0, 12)}`);
+        try {
+          const cloneResult = await cloneBytecodeInContainer({
+            sandbox,
+            containerId,
+            originalAddress: options.redeployFrom,
+            freshAddress: target,
+            sourceBlockTag: options.block ? `0x${parseInt(options.block).toString(16)}` : "latest",
+            freshImplSeed: contractName,
+          });
+          const summary =
+            `Cloned ${cloneResult.codeBytes}B of code + ${cloneResult.slotsCopied} storage slot(s)` +
+            (cloneResult.proxyDetected
+              ? ` (proxy impl ${cloneResult.originalImplAddress} → ${cloneResult.freshImplAddress})`
+              : "");
+          console.error(`[redeploy] ${summary}`);
+          spinner.text = summary;
+        } catch (err: any) {
+          spinner.fail(`Redeploy clone failed: ${err.message}`);
+          throw err;
+        }
       }
 
       // Build to verify sources compile
@@ -301,7 +371,11 @@ program
       process.exit(1);
     } finally {
       if (containerId) {
-        await sandbox.destroyContainer(containerId).catch(() => {});
+        if (process.env.SOLHUNT_KEEP_CONTAINER === "1") {
+          console.error(`[scan] SOLHUNT_KEEP_CONTAINER=1 — leaving container ${containerId.slice(0, 12)} running for inspection. Remove manually with: docker rm -f ${containerId}`);
+        } else {
+          await sandbox.destroyContainer(containerId).catch(() => {});
+        }
       }
     }
   });
