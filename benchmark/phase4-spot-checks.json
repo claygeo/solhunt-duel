@@ -1,0 +1,17 @@
+{
+  "picks": [
+    [
+      "templedao",
+      "r1"
+    ],
+    [
+      "dexible",
+      "r1"
+    ],
+    [
+      "olympus",
+      "r1"
+    ]
+  ],
+  "note": "manual forge-trace inspection required"
+}
