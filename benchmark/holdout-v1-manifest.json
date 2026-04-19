@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-04-19T15:50:59.075Z",
+  "gitCommit": "b87489c5e1df7925ac4e82a30fa8cb0c5fe1a963",
+  "entries": [
+    {
+      "id": "dexible",
+      "name": "Dexible",
+      "contractName": "DexibleProxy",
+      "chain": "ethereum",
+      "blockNumber": 16646021,
+      "originalAddress": "0xDE62E1b0edAa55aAc5ffBE21984D321706418024",
+      "vulnerabilityClass": "access-control",
+      "sha256OfSource": "f9ddcc1464f9f4757a4bc193980061eefbc76c9322ed15a67e11c8405be12ec5",
+      "sha256OfOriginalBytecode": "95c846d8324c06b3a3abe711aec44c20c5041d6a212761c124bc11ba212ec665",
+      "sourceFileCount": 19
+    },
+    {
+      "id": "audius-governance",
+      "name": "Audius Governance",
+      "contractName": "AudiusAdminUpgradeabilityProxy",
+      "chain": "ethereum",
+      "blockNumber": 15201792,
+      "originalAddress": "0x4DEcA517D6817B6510798b7328F2314d3003AbAC",
+      "vulnerabilityClass": "access-control",
+      "sha256OfSource": "5fac75291bd8878ba6f52881a9aec87560b6800371798e0791d02d9ac334c2e9",
+      "sha256OfOriginalBytecode": "2c2b4024d7a4f53d8e4a06e5f3e506b609755a65b512e70d394034320fbe632a",
+      "sourceFileCount": 1
+    },
+    {
+      "id": "hedgey-finance",
+      "name": "Hedgey Finance",
+      "contractName": "ClaimCampaigns",
+      "chain": "ethereum",
+      "blockNumber": 19687889,
+      "originalAddress": "0xBc452fdC8F851d7c5B72e1Fe74DFB63bb793D511",
+      "vulnerabilityClass": "access-control",
+      "sha256OfSource": "d75c499f08010195d9a77fa2f6060546aaa565f53e2872e8a6aceccd406ef098",
+      "sha256OfOriginalBytecode": "67bbf3631f8386e2777b787e6cd7c88ac7bf63ff18c1c6e4305dd6cdc070dc57",
+      "sourceFileCount": 11
+    },
+    {
+      "id": "olympusdao-bondfixedexpiry",
+      "name": "OlympusDAO BondFixedExpiry",
+      "contractName": "BondFixedExpiryTeller",
+      "chain": "ethereum",
+      "blockNumber": 15794362,
+      "originalAddress": "0x007FE7c498A2Cf30971ad8f2cbC36bd14Ac51156",
+      "vulnerabilityClass": "logic-error",
+      "sha256OfSource": "c406264c84e0edb66dd70bde65981565d1daade84dafb532855374e083630779",
+      "sha256OfOriginalBytecode": "c2eb5c82b3f1533e6bda56a41168bda93497e640ed9b07c01d8cde4e55da0123",
+      "sourceFileCount": 16
+    },
+    {
+      "id": "templedao-stax",
+      "name": "TempleDAO STAX",
+      "contractName": "StaxLPStaking",
+      "chain": "ethereum",
+      "blockNumber": 15725065,
+      "originalAddress": "0xd2869042e12a3506100af1d192b5b04d65137941",
+      "vulnerabilityClass": "access-control",
+      "sha256OfSource": "d902926c70ba1e1b549e563d020ae0bf01da0e37097e88ac64a4717995ccfbbc",
+      "sha256OfOriginalBytecode": "bcdb989d9d93850cc1d68b821dd534569d230a9409d5951f294575aa7ab07bd6",
+      "sourceFileCount": 8
+    },
+    {
+      "id": "dfx-finance",
+      "name": "DFX Finance",
+      "contractName": "Curve",
+      "chain": "ethereum",
+      "blockNumber": 15941702,
+      "originalAddress": "0x46161158b1947D9149E066d6d31AF1283b2d377C",
+      "vulnerabilityClass": "reentrancy",
+      "sha256OfSource": "713ec21ac205d106954dc7d8e66879558b3928ac07cb7fcaae459c5163041b07",
+      "sha256OfOriginalBytecode": "1437e547ea26df0ca2972c1a89c1c23017b38f09c0f014aa5f3d8caf67d7e94f",
+      "sourceFileCount": 30
+    },
+    {
+      "id": "floordao",
+      "name": "FloorDAO",
+      "contractName": "FloorStaking",
+      "chain": "ethereum",
+      "blockNumber": 18068771,
+      "originalAddress": "0x759c6De5bcA9ADE8A1a2719a31553c4B7DE02539",
+      "vulnerabilityClass": "flash-loan",
+      "sha256OfSource": "6143ddfc04e605791bf7c918336d33a14a0ecd2a2f9ab398ebc51b6c6a78541f",
+      "sha256OfOriginalBytecode": "fe7d458d6726bc034acf240a980cd2195578246181469a6e81759a9d7cc6dec1",
+      "sourceFileCount": 9
+    },
+    {
+      "id": "floor-protocol",
+      "name": "Floor Protocol",
+      "contractName": "FlooringPeriphery",
+      "chain": "ethereum",
+      "blockNumber": 18802286,
+      "originalAddress": "0xc538d17a6aacc5271be5f51b891e2e92c8187edd",
+      "vulnerabilityClass": "access-control",
+      "sha256OfSource": "24c545cd6e280cd31d4129eee933edf2ef28dae732936623de28a6cd6500c0db",
+      "sha256OfOriginalBytecode": "4ef2d2b00caa5046262dc93d7e35efe7077a8f6df05e2ccad69e8171aea1bfec",
+      "sourceFileCount": 29
+    },
+    {
+      "id": "seneca-protocol",
+      "name": "Seneca Protocol",
+      "contractName": "Seneca",
+      "chain": "ethereum",
+      "blockNumber": 19325935,
+      "originalAddress": "0x65c210c59B43EB68112b7a4f75C8393C36491F06",
+      "vulnerabilityClass": "access-control",
+      "sha256OfSource": "1ce5ce8b2c9fbcb7a6937b893cf37059e3d3aec58b62408c47fd91894201572d",
+      "sha256OfOriginalBytecode": "efcdf8f9e70ca3d9ac273e558a334ad697e512677de296940e74b5b3a789be6f",
+      "sourceFileCount": 18
+    },
+    {
+      "id": "abracadabra",
+      "name": "Abracadabra",
+      "contractName": "CauldronV4",
+      "chain": "ethereum",
+      "blockNumber": 19118658,
+      "originalAddress": "0x7259e152103756e1616a77ae982353c3751a6a90",
+      "vulnerabilityClass": "reentrancy",
+      "sha256OfSource": "200922f7ea286bd279b20647c408e3b45436184bbe330330d5059d5438f7a03c",
+      "sha256OfOriginalBytecode": "00d6031ac149ddcbdaf32df39fe0a6b44a886b0a9049834f77eb716b94f62b36",
+      "sourceFileCount": 14
+    }
+  ]
+}
