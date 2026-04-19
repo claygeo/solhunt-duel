@@ -1,0 +1,26 @@
+# Phase 0 Dexible harness — pinned to the target contract's compiler.
+# Live Dexible implementation was deployed with solc 0.8.17 + optimizer runs=100.
+# We pin the same here so compiled bytecode offsets are similar shape.
+
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+libs = ["lib"]
+solc_version = "0.8.17"
+optimizer = true
+optimizer_runs = 100
+evm_version = "shanghai"
+via_ir = false
+
+# Block pinned to one after the on-chain exploit (the DeFiHackLabs reference).
+# The harness creates the fork explicitly via cheatcodes; this is here so
+# `forge inspect` + local runs pick up the same fork block on ad-hoc use.
+[rpc_endpoints]
+mainnet = "${ETH_RPC_URL}"
+
+[fuzz]
+runs = 32
+
+[fmt]
+line_length = 100
