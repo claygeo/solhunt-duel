@@ -174,7 +174,7 @@ export async function chatCompletion(
   const body: Record<string, any> = {
     model: config.model,
     messages: formattedMessages,
-    max_tokens: config.maxTokens ?? 16384,
+    max_tokens: config.maxTokens ?? 4096,
     temperature: 0,
   };
 
@@ -506,7 +506,7 @@ async function anthropicCompletion(
 
   const body: any = {
     model: config.model,
-    max_tokens: config.maxTokens ?? 16384,
+    max_tokens: config.maxTokens ?? 4096,
     messages: anthropicMessages,
   };
 

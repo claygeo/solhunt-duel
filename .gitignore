@@ -27,3 +27,17 @@ staging/
 
 # Next.js type cache
 tsconfig.tsbuildinfo
+
+# Local Netlify folder
+.netlify
+
+# Ephemeral LinkedIn post artifacts (source of truth is the .md)
+LINKEDIN_POST_READY.docx
+
+# Design review ephemeral artifacts
+ui/.design-review/
+
+# Raw duel run logs (commit SUMMARY jsons in data/duels/ instead)
+duel-e2e.log
+duel-*.log
+logs/

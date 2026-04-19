@@ -18,8 +18,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.2",
+    "@types/diff": "^5.2.3",
     "chalk": "^5.4.1",
     "commander": "^13.0.0",
+    "diff": "^5.2.2",
     "dockerode": "^4.0.4",
     "dotenv": "^16.4.7",
     "js-sha3": "^0.9.3",
