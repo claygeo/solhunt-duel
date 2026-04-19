@@ -1,7 +1,9 @@
 [build]
   base = "ui/"
   command = "npm run build"
-  publish = "ui/.next"
+  # publish is resolved relative to `base`, so ".next" becomes "ui/.next" at build time.
+  # Previously had "ui/.next" here which Netlify doubled into "ui/ui/.next".
+  publish = ".next"
 
 [build.environment]
   NPM_FLAGS = "--legacy-peer-deps"
