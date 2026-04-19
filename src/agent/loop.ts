@@ -48,6 +48,13 @@ export async function runAgent(
   onIteration?: (iteration: number, toolName: string) => void,
   collector?: DataCollector
 ): Promise<AgentResult> {
+  if (
+    process.env.RED_VIA_CLAUDE_CLI === "1" ||
+    process.env.RED_VIA_CLAUDE_CLI === "true"
+  ) {
+    const { runRedTeamViaClaudeCli } = await import("./loop-via-claude-cli.js");
+    return runRedTeamViaClaudeCli(target, containerId, sandbox, config, onIteration, collector);
+  }
   const executor = new ToolExecutor(sandbox, containerId, config.toolTimeout);
   const tools = getToolDefinitions();
   const systemPrompt = getSystemPrompt();
