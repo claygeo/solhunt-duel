@@ -1,0 +1,112 @@
+[
+  {
+    "name": "Dexible",
+    "contractName": "DexibleProxy",
+    "originalAddress": "0xDE62E1b0edAa55aAc5ffBE21984D321706418024",
+    "forkBlockNumber": 16646021,
+    "sourceDir": "benchmark/sources/Dexible",
+    "vulnerabilityClass": "access-control",
+    "expectedBehaviorOnFreshAddress": "Arbitrary-call vuln in selfSwap() reachable on zero'd storage; Red previously found it cold. Fresh-address deploy keeps the vuln live (no victim-approval required to demo the class).",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 19
+  },
+  {
+    "name": "Audius Governance",
+    "contractName": "AudiusAdminUpgradeabilityProxy",
+    "originalAddress": "0x4DEcA517D6817B6510798b7328F2314d3003AbAC",
+    "forkBlockNumber": 15201792,
+    "sourceDir": "benchmark/sources/AudiusGovernance",
+    "vulnerabilityClass": "access-control",
+    "expectedBehaviorOnFreshAddress": "Storage-collision re-initialization vuln. Fresh deploy copies top 16 slots + EIP-1967 impl. RISK: proxy/impl layout is complex, re-init path may depend on state we didn't snapshot. If Red reports 'contract uninitialized', that's still a defensible access-control finding.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 1
+  },
+  {
+    "name": "Hedgey Finance",
+    "contractName": "ClaimCampaigns",
+    "originalAddress": "0xBc452fdC8F851d7c5B72e1Fe74DFB63bb793D511",
+    "forkBlockNumber": 19687889,
+    "sourceDir": "benchmark/sources/HedgeyFinance",
+    "vulnerabilityClass": "access-control",
+    "expectedBehaviorOnFreshAddress": "Missing input validation on createLockedCampaign. Vuln is in the function body itself, independent of storage state — fresh deploy preserves the class.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 11
+  },
+  {
+    "name": "OlympusDAO BondFixedExpiry",
+    "contractName": "BondFixedExpiryTeller",
+    "originalAddress": "0x007FE7c498A2Cf30971ad8f2cbC36bd14Ac51156",
+    "forkBlockNumber": 15794362,
+    "sourceDir": "benchmark/sources/OlympusDAOBondFixedExpiry",
+    "vulnerabilityClass": "logic-error",
+    "expectedBehaviorOnFreshAddress": "redeemFixed() missing ownership check. Fresh deploy preserves the bug; Red can demo by calling redeemFixed with any amount.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 16
+  },
+  {
+    "name": "TempleDAO STAX",
+    "contractName": "StaxLPStaking",
+    "originalAddress": "0xd2869042e12a3506100af1d192b5b04d65137941",
+    "forkBlockNumber": 15725065,
+    "sourceDir": "benchmark/sources/TempleDAOSTAX",
+    "vulnerabilityClass": "access-control",
+    "expectedBehaviorOnFreshAddress": "migrateStake access-control flaw. Static code pattern — fresh deploy keeps it.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 8
+  },
+  {
+    "name": "DFX Finance",
+    "contractName": "Curve",
+    "originalAddress": "0x46161158b1947D9149E066d6d31AF1283b2d377C",
+    "forkBlockNumber": 15941702,
+    "sourceDir": "benchmark/sources/DFXFinance",
+    "vulnerabilityClass": "reentrancy",
+    "expectedBehaviorOnFreshAddress": "Flash-loan reentrancy in viewDeposit/deposit. RISK: reentrancy-exploit demo may need victim liquidity — Red may need to seed state via anvil_setStorageAt or pivot to showing the code-level reentrancy pattern.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 30
+  },
+  {
+    "name": "FloorDAO",
+    "contractName": "FloorStaking",
+    "originalAddress": "0x759c6De5bcA9ADE8A1a2719a31553c4B7DE02539",
+    "forkBlockNumber": 18068771,
+    "sourceDir": "benchmark/sources/FloorDAO",
+    "vulnerabilityClass": "flash-loan",
+    "expectedBehaviorOnFreshAddress": "Flash-loan + price oracle manipulation. RISK: exploit needs live pool state + attacker capital — fresh deploy may not be demonstrable end-to-end. Red should fall back to showing the code-level pattern.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 9
+  },
+  {
+    "name": "Floor Protocol",
+    "contractName": "FlooringPeriphery",
+    "originalAddress": "0xc538d17a6aacc5271be5f51b891e2e92c8187edd",
+    "forkBlockNumber": 18802286,
+    "sourceDir": "benchmark/sources/FloorProtocol",
+    "vulnerabilityClass": "access-control",
+    "expectedBehaviorOnFreshAddress": "Missing role check on mint/burn. Static pattern, fresh deploy preserves.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 29
+  },
+  {
+    "name": "Seneca Protocol",
+    "contractName": "Seneca",
+    "originalAddress": "0x65c210c59B43EB68112b7a4f75C8393C36491F06",
+    "forkBlockNumber": 19325935,
+    "sourceDir": "benchmark/sources/SenecaProtocol",
+    "vulnerabilityClass": "access-control",
+    "expectedBehaviorOnFreshAddress": "Arbitrary-call in performOperations. Static pattern, fresh deploy preserves (same class as Dexible — good sanity check).",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 18
+  },
+  {
+    "name": "Abracadabra",
+    "contractName": "CauldronV4",
+    "originalAddress": "0x7259e152103756e1616a77ae982353c3751a6a90",
+    "forkBlockNumber": 19118658,
+    "sourceDir": "benchmark/sources/Abracadabra",
+    "vulnerabilityClass": "reentrancy",
+    "expectedBehaviorOnFreshAddress": "Reentrancy in accrue(). Like DFX, demonstration may require live market state — Red may pivot to code-level finding.",
+    "sourceFetchStatus": "skipped-cached",
+    "solFileCount": 14
+  }
+]

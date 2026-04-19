@@ -14,7 +14,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, relative } from "node:path";
 import { config as loadDotenv } from "dotenv";
 
 import { fetchContractSource } from "../src/ingestion/etherscan.js";
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
           contractName: r.contractName,
           originalAddress: entry.contractAddress,
           forkBlockNumber: entry.blockNumber,
-          sourceDir,
+          sourceDir: relative(process.cwd(), sourceDir).replace(/\\/g, "/"),
           vulnerabilityClass: r.vulnerabilityClass,
           expectedBehaviorOnFreshAddress: r.expectedBehaviorOnFreshAddress,
           sourceFetchStatus: "skipped-cached",
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
         contractName: r.contractName,
         originalAddress: entry.contractAddress,
         forkBlockNumber: entry.blockNumber,
-        sourceDir,
+        sourceDir: relative(process.cwd(), sourceDir).replace(/\\/g, "/"),
         vulnerabilityClass: r.vulnerabilityClass,
         expectedBehaviorOnFreshAddress: r.expectedBehaviorOnFreshAddress,
         sourceFetchStatus: "ok",
@@ -222,7 +222,7 @@ async function main(): Promise<void> {
         contractName: r.contractName,
         originalAddress: entry.contractAddress,
         forkBlockNumber: entry.blockNumber,
-        sourceDir,
+        sourceDir: relative(process.cwd(), sourceDir).replace(/\\/g, "/"),
         vulnerabilityClass: r.vulnerabilityClass,
         expectedBehaviorOnFreshAddress: r.expectedBehaviorOnFreshAddress,
         sourceFetchStatus: "failed",
