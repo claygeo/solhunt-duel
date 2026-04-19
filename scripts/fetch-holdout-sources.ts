@@ -43,7 +43,7 @@ const ROSTER: RosterEntry[] = [
   {
     name: "Audius Governance",
     datasetMatch: "Audius Governance",
-    contractName: "Governance",
+    contractName: "AudiusAdminUpgradeabilityProxy",
     vulnerabilityClass: "access-control",
     expectedBehaviorOnFreshAddress:
       "Storage-collision re-initialization vuln. Fresh deploy copies top 16 slots + EIP-1967 impl. RISK: proxy/impl layout is complex, re-init path may depend on state we didn't snapshot. If Red reports 'contract uninitialized', that's still a defensible access-control finding.",
@@ -83,7 +83,7 @@ const ROSTER: RosterEntry[] = [
   {
     name: "FloorDAO",
     datasetMatch: "FloorDAO",
-    contractName: "SushiswapStaking",
+    contractName: "FloorStaking",
     vulnerabilityClass: "flash-loan",
     expectedBehaviorOnFreshAddress:
       "Flash-loan + price oracle manipulation. RISK: exploit needs live pool state + attacker capital — fresh deploy may not be demonstrable end-to-end. Red should fall back to showing the code-level pattern.",
@@ -91,7 +91,7 @@ const ROSTER: RosterEntry[] = [
   {
     name: "Floor Protocol",
     datasetMatch: "Floor Protocol",
-    contractName: "FloorToken",
+    contractName: "FlooringPeriphery",
     vulnerabilityClass: "access-control",
     expectedBehaviorOnFreshAddress:
       "Missing role check on mint/burn. Static pattern, fresh deploy preserves.",
