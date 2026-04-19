@@ -11,9 +11,9 @@ const fx = fixture as UiFixture;
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-bg">
+    <main className="min-h-screen overflow-x-hidden bg-bg">
       <Header />
-      <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-6 py-8">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-5 px-4 py-4 sm:gap-6 sm:px-6 sm:py-8">
         <Hero fx={fx} />
         <Pivot text={fx.pivot.narrative} />
         {fx.rounds.map((r) => (

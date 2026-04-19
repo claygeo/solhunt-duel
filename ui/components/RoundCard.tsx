@@ -14,12 +14,12 @@ export default function RoundCard({ round }: { round: Round }) {
   const r1 = round.round === 1 && round.red.found && round.blue;
 
   return (
-    <section className="flex flex-col gap-4 border border-hairline p-6 sm:p-7">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-3">
-        <h2 className="font-mono text-[13px] tracking-[0.14em] text-ink">
+    <section className="flex flex-col gap-4 border border-hairline p-5 sm:p-6 lg:p-7">
+      <div className="flex flex-col gap-2 border-b border-hairline pb-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between">
+        <h2 className="font-mono text-[12px] tracking-[0.14em] text-ink sm:text-[13px]">
           {round.label}
         </h2>
-        <span className="font-mono text-[11px] text-mute">
+        <span className="font-mono text-[10.5px] text-mute sm:text-[11px]">
           <span className="text-ink">red</span> {round.red.turns} turns ·{" "}
           {formatMs(round.red.durationMs)}
           {round.blue ? (
@@ -49,9 +49,9 @@ export default function RoundCard({ round }: { round: Round }) {
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="font-sans text-[12.5px] leading-relaxed text-ink">
-              <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-mute">
-                patch rationale.{" "}
+            <div className="font-sans text-[13px] leading-[1.65] text-ink">
+              <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.12em] text-mute">
+                patch rationale.
               </span>
               {round.blue.rationale}
             </div>
@@ -74,14 +74,14 @@ export default function RoundCard({ round }: { round: Round }) {
               caption={`${round.red.model} · ${round.red.turns} turns · found=${round.red.found ? "true" : "false"}`}
             />
           ) : null}
-          <div className="flex flex-wrap gap-2 font-mono text-[11px] text-mute">
-            <span className="border border-hairline px-3 py-[5px] text-mute">
+          <div className="flex flex-wrap gap-2 font-mono text-[11px]">
+            <span className="inline-flex items-center border border-hairline px-3 py-[6px] leading-none text-[#8a8a8a]">
               patch held
             </span>
-            <span className="border border-hairline px-3 py-[5px] text-mute">
+            <span className="inline-flex items-center border border-hairline px-3 py-[6px] leading-none text-[#8a8a8a]">
               no alt pivot
             </span>
-            <span className="border border-hairline px-3 py-[5px] text-amber">
+            <span className="inline-flex items-center border border-amber/60 px-3 py-[6px] leading-none text-amber">
               convergence: hardened
             </span>
           </div>

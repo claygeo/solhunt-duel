@@ -18,14 +18,14 @@ export default function GateChips({
           <span
             key={k}
             className={
-              "flex items-center gap-2 border px-3 py-[5px] font-mono text-[11px] " +
+              "inline-flex items-center gap-2 border px-3 py-[6px] font-mono text-[11px] leading-none " +
               (ok
-                ? "border-mint/30 text-mint"
-                : "border-coral/30 text-coral")
+                ? "border-mint/50 text-mint"
+                : "border-coral/50 text-coral")
             }
           >
-            <span className="tabular">{ok ? "PASS" : "FAIL"}</span>
-            <span>{label}</span>
+            <span className="tabular font-medium">{ok ? "PASS" : "FAIL"}</span>
+            <span className="break-all">{label}</span>
           </span>
         );
       })}
