@@ -1,0 +1,77 @@
+{
+  "_README": "Cold-DM solhunt scan targets for 5 small DeFi protocols. All 5 main contract addresses were verified via authoritative sources (each protocol's own docs, GitHub Addresses.md, or DefiLlama-linked Etherscan/Arbiscan pages) and confirmed verified via Blockscout API on the correct chain. Verification status (is_verified, source name, compiler version) was pulled directly from arbitrum.blockscout.com and eth.blockscout.com smart-contract APIs. Sturdy V2's SturdyPairRegistry is the canonical pair registry (Ethereum). D2 Finance's flagship Arbitrum vault is ETH++ at 0x27D22Eb71f00495Eccc89Bb02c2B68E6988C6A42 (note: their newer hXXI flagship is on HyperEVM, not Arbitrum, so we use ETH++ for the Arbitrum scan as user requested). Kresko's Diamond proxy is the EIP-2535 entry point on Arbitrum and serves as the core protocol contract. Y2K Finance V2's main contract is the CarouselFactory at 0xC3179AC01b7D68aeD4f27a19510ffe2bfb78Ab3e (V1's older VaultFactory at 0x442Fd67... was deprecated in favor of CarouselFactory for V2). Resonate (Revest Finance) main protocol contract on Ethereum mainnet — the matching/queue engine — is verified and active. 0 targets skipped.",
+  "generated_at": "2026-04-27T21:30:00Z",
+  "targets": {
+    "sturdy-v2": {
+      "name": "Sturdy V2",
+      "chain": "ethereum",
+      "chain_id": 1,
+      "main_contract": {
+        "name": "SturdyPairRegistry",
+        "address": "0xd577429db653Cd20EFFCD4977B2B41A6Fd794A3b",
+        "verified": true,
+        "context": "Canonical registry of all Sturdy V2 lending pairs. Maintains the authoritative list of deployed SturdyPair instances and gates which addresses can deploy new pairs (Solidity 0.8.21, AGPLv3, owner-controlled).",
+        "explorer_url": "https://etherscan.io/address/0xd577429db653Cd20EFFCD4977B2B41A6Fd794A3b"
+      },
+      "twitter": "@SturdyFinance",
+      "source": "https://github.com/sturdyfi/v2-aggregator/blob/main/Addresses.md (linked from https://docs.sturdy.finance/library/contract-addresses)"
+    },
+    "d2-finance": {
+      "name": "D2 Finance (ETH++ flagship)",
+      "chain": "arbitrum",
+      "chain_id": 42161,
+      "main_contract": {
+        "name": "VaultV1Whitelisted (ETH++)",
+        "address": "0x27D22Eb71f00495Eccc89Bb02c2B68E6988C6A42",
+        "verified": true,
+        "context": "ETH++ is D2 Finance's flagship ERC-4626 derivatives vault on Arbitrum — handles deposits, withdrawals, share accounting, and epoch-based actively-managed options strategies. Listed first in their LTIPP application. (Note: their newer hXXI vault is on HyperEVM, not Arbitrum.)",
+        "explorer_url": "https://arbiscan.io/address/0x27D22Eb71f00495Eccc89Bb02c2B68E6988C6A42"
+      },
+      "twitter": "@D2_Finance",
+      "source": "https://forum.arbitrum.foundation/t/d2-finance-ltipp-application-draft-final/21826 (D2's official LTIPP application listing ETH++ as flagship); verified on https://arbitrum.blockscout.com/api/v2/smart-contracts/0x27D22Eb71f00495Eccc89Bb02c2B68E6988C6A42"
+    },
+    "kresko": {
+      "name": "Kresko",
+      "chain": "arbitrum",
+      "chain_id": 42161,
+      "main_contract": {
+        "name": "Diamond",
+        "address": "0x0000000000177abD99485DCaea3eFaa91db3fe72",
+        "verified": true,
+        "context": "EIP-2535 Diamond proxy for the entire Kresko synthetic asset protocol on Arbitrum — single-entrypoint for collateral deposits, borrowing krAssets (krETH, krBTC, krSOL, krEUR, krJPY, krGBP, krXAU), liquidations, and KISS stable. Per docs, the Vault and KreskoAsset contracts exist 'outside the diamond scope' — Diamond is the core. (Solidity 0.8.23, fully verified.)",
+        "explorer_url": "https://arbiscan.io/address/0x0000000000177abD99485DCaea3eFaa91db3fe72"
+      },
+      "twitter": "@KreskoProtocol",
+      "source": "https://kresko.gitbook.io/kresko-docs/contracts/deployment-addresses (official Kresko docs)"
+    },
+    "resonate": {
+      "name": "Resonate (Revest Finance)",
+      "chain": "ethereum",
+      "chain_id": 1,
+      "main_contract": {
+        "name": "Resonate",
+        "address": "0x80ca847618030bc3e26ad2c444fd007279daf50a",
+        "verified": true,
+        "context": "Main Resonate protocol contract on Ethereum mainnet — queue-based matching engine for yield futures. Handles submit-issuer/submit-consumer orders, claim-interest, FNFT mint/redeem, and ERC-4626 vault adapter integration. Solidity 0.8.13, deployed by Revest Finance.",
+        "explorer_url": "https://etherscan.io/address/0x80ca847618030bc3e26ad2c444fd007279daf50a"
+      },
+      "twitter": "@RevestFinance",
+      "source": "https://etherscan.io/address/0x80ca847618030bc3e26ad2c444fd007279daf50a (verified Etherscan; cross-referenced against https://github.com/Revest-Finance/ResonateContracts source)"
+    },
+    "y2k-finance": {
+      "name": "Y2K Finance V2",
+      "chain": "arbitrum",
+      "chain_id": 42161,
+      "main_contract": {
+        "name": "CarouselFactory (V2)",
+        "address": "0xC3179AC01b7D68aeD4f27a19510ffe2bfb78Ab3e",
+        "verified": true,
+        "context": "V2 CarouselFactory — main entry point for Y2K's Earthquake V2 catastrophe-bond / depeg-insurance markets on Arbitrum. createNewCarouselMarket() spawns paired premium/collateral vaults; controls emissionsToken; owner-gated. (Solidity 0.8.17. V1 VaultFactory at 0x442Fd67... is now deprecated in favor of V2.)",
+        "explorer_url": "https://arbiscan.io/address/0xC3179AC01b7D68aeD4f27a19510ffe2bfb78Ab3e"
+      },
+      "twitter": "@y2kfinance",
+      "source": "https://y2k-finance.gitbook.io/y2k-finance/products/earthquake/contracts/addresses (official Y2K docs, marks 0xC3179AC0... as V2 CarouselFactory)"
+    }
+  },
+  "skipped": []
+}
