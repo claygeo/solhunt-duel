@@ -196,14 +196,91 @@ If the call reverts with "selector not found" / fallback revert, the
 function is not part of the live ABI. Whatever it does on the deprecated
 impl's storage is irrelevant.
 
+### 5. Permissionless functions that ARE the deposit primitive (Twyne 2026-04-27)
+
+Before claiming an unprotected function is a vulnerability, search the
+protocol's own repo (Periphery, SDK, Router, Helper, Wrapper modules) for
+callers of that exact function. If the protocol's own code calls the
+function the same way your "exploit" does — same signature, same receiver
+pattern, same atomic context — the function is **documented design**, not
+a bug.
+
+Common patterns that LOOK like access-control bugs but are typically
+intentionally permissionless:
+
+- `skim` (ERC4626-style wrappers, Euler EVK forks)
+- `pull` / `flush` / `harvest` (yield aggregator routing)
+- `liquidate` (lending protocols — anyone can liquidate)
+- `poke` / `update` / `crank` (oracle / time-keeper functions)
+- `swap` / `flashLoan` / `executeOperation` (DEX / flash-loan callbacks)
+
+For each suspected access-control finding, before promoting to
+`found=true`, run this check via Bash:
+
+```bash
+# 1. Get the contract's GitHub repo from Etherscan source metadata
+#    (often in the contract metadata's "repository" field, or visible
+#    in an SPDX header / NatSpec @author tag).
+
+# 2. If you can identify the protocol's repo, grep for callers of the
+#    function. The function name + Periphery/SDK/Router directories are
+#    the highest-signal places to look.
+
+# 3. If the protocol's own callers use the function the same way your
+#    exploit does (same signature, same receiver), this is design.
+#    Emit found=false with notes:
+#    "Function flagged as access-control vuln but the protocol's own
+#    Periphery code at <path> calls it identically to the exploit. This
+#    is the deposit/withdrawal primitive, not a vulnerability."
+```
+
+If you cannot identify the protocol's repo, fall back to:
+
+- Search for the function name + the protocol name on GitHub general
+  search (e.g. via `cast` / Bash with curl + GitHub's search API).
+- Read the function's NatSpec docstring carefully. Phrases like "anyone
+  can call this" / "permissionless" / "trustless" are explicit signals
+  that the lack of access control is intentional.
+
+### 6. Donation-attack against ERC4626 / Euler EVK style wrappers (Twyne 2026-04-27)
+
+When the exploit requires "asset X lands on the contract outside of
+deposit()" — direct transfer, transfer-then-call routers, front-running
+approve/transfer/deposit — check whether the contract is an ERC4626-style
+wrapper or Euler EVK fork.
+
+Tells:
+- Contract has both `deposit()` and `skim()` (or `mint()` and `pull()`)
+- `totalAssets()` reads from the underlying balance, not from internal
+  bookkeeping
+- The protocol's GitHub identifies as Euler EVK fork, ERC4626 wrapper,
+  or Aave/Compound aToken wrapper
+
+These designs intentionally accept permissionless skim/sweep as the
+trade-off against admin centralization. Per Euler's own security docs,
+front-running stranded donations is **stated public design**, not a
+vulnerability.
+
+Donation-attack severity is almost always one of:
+- Out of scope: "rewards accrued to contract"
+- Out of scope: "user error / sending funds to the wrong address"
+- Wontfix: "design choice, see protocol security docs"
+
+Promote to `found=false` with notes:
+
+> "Donation-attack on EVK-style wrapper. Function X is permissionless by
+> design (matches Euler EVK pattern; protocol's Periphery/<path> calls
+> X identically). Severity is out-of-scope per the bounty rubric."
+
 ### Why these rules exist
 
 Every false-positive submission to a bug-bounty program damages the
 researcher's reputation and slows triage of real findings. An honest
 "nothing found" with substantive analysis is more valuable than a passing
-test that requires cheatcodes or attacks dead code.
+test that requires cheatcodes, attacks dead code, or "exploits" the
+protocol's documented public API.
 
-If you hit any of the four patterns above, the correct output is:
+If you hit any of the six patterns above, the correct output is:
 
 ```
 ===SOLHUNT_REPORT_START===

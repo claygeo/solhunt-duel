@@ -113,8 +113,11 @@ main() {
       log "[${idx}/${#TARGETS[@]}] ${name}: unclear verdict (check $scan_log)"
     fi
 
-    # Rate-limit awareness — back off if Max says so
-    if grep -qiE 'rate.?limit|429|max.{0,5}usage' "$scan_log" 2>/dev/null; then
+    # Rate-limit awareness — back off if Max says so.
+    # Match phrases only at word boundaries to avoid false-matching
+    # the literal "429" / "rate" inside contract addresses (Sturdy's
+    # 0xd577429db653... bit us once already).
+    if grep -qiE '\brate.?limit\b|\b429\b[^a-fA-F0-9]|\bmax.{0,5}usage\b|\bToo Many Requests\b' "$scan_log" 2>/dev/null; then
       log "rate-limit detected, halting sweep early"
       write_status "RATE_LIMITED"
       exit 5
