@@ -5,7 +5,7 @@ import chalk from "chalk";
 import ora from "ora";
 import dotenv from "dotenv";
 import { randomUUID } from "node:crypto";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve as pathResolve, relative as pathRelative, join as pathJoin } from "node:path";
 
 import { SandboxManager } from "./sandbox/manager.js";
@@ -15,7 +15,9 @@ import { runPreScanRecon, formatReconForPrompt } from "./sandbox/recon.js";
 import { cloneBytecodeInContainer } from "./sandbox/clone-bytecode.js";
 import { fetchContractSource } from "./ingestion/etherscan.js";
 import { runAgent } from "./agent/loop.js";
+import { runRedTeamViaClaudeCli } from "./agent/loop-via-claude-cli.js";
 import { resolveProvider, type ProviderConfig } from "./agent/provider.js";
+import { assertInScopeOrAcknowledged, type InScopeTarget } from "./safety/in-scope.js";
 import { calculateCost } from "./reporter/format.js";
 import { renderReport, renderBenchmarkTable } from "./reporter/markdown.js";
 import type { ScanResult } from "./reporter/format.js";
@@ -31,6 +33,73 @@ program
   .name("solhunt")
   .description("Autonomous AI agent for smart contract vulnerability detection")
   .version("0.1.0");
+
+function renderFindingReadme(args: {
+  target: string;
+  contractName: string;
+  inScope: InScopeTarget | null;
+  report: any;
+  error?: string;
+  outDir: string;
+}): string {
+  const lines: string[] = [];
+  lines.push(`# Solhunt finding bundle\n`);
+  lines.push(`- **Target address:** \`${args.target}\``);
+  lines.push(`- **Contract name:** ${args.contractName}`);
+  if (args.inScope) {
+    lines.push(`- **Program:** [${args.inScope.program}](${args.inScope.programUrl})`);
+    lines.push(`- **In-scope as of:** ${args.inScope.scrapedAt}`);
+  } else {
+    lines.push(`- **Program:** OUT-OF-SCOPE OVERRIDE (no Immunefi listing)`);
+  }
+  lines.push(`- **Generated:** ${new Date().toISOString()}`);
+  lines.push(``);
+  lines.push(`## DO NOT SUBMIT WITHOUT HUMAN REVIEW.`);
+  lines.push(``);
+  lines.push(`Solhunt is an autonomous agent. Every claim below MUST be re-verified by a human before any Immunefi submission. Common failure modes:`);
+  lines.push(`- Exploit test passes only because of an artifact of the fork (e.g. a flash-loan callback that wouldn't work on mainnet).`);
+  lines.push(`- "Vulnerability" is actually expected protocol behavior under intended access control.`);
+  lines.push(`- Severity inflated. Check the program's severity classification before trusting the agent's label.`);
+  lines.push(``);
+  if (args.error) {
+    lines.push(`## Error`);
+    lines.push(``);
+    lines.push("```");
+    lines.push(args.error);
+    lines.push("```");
+    lines.push(``);
+  }
+  if (args.report) {
+    const r = args.report;
+    lines.push(`## Agent verdict`);
+    lines.push(``);
+    lines.push(`- **Found:** ${r.found ? "YES" : "NO"}`);
+    if (r.vulnerability) {
+      lines.push(`- **Class:** ${r.vulnerability.class ?? "?"}`);
+      lines.push(`- **Severity (agent claim):** ${r.vulnerability.severity ?? "?"}`);
+      lines.push(`- **Functions:** ${(r.vulnerability.functions ?? []).join(", ") || "?"}`);
+      lines.push(`- **Description:** ${r.vulnerability.description ?? "(none)"}`);
+    }
+    if (r.exploit) {
+      lines.push(`- **Test passed (authoritative):** ${r.exploit.testPassed ? "YES" : "NO"}`);
+      lines.push(`- **Value at risk (agent claim):** ${r.exploit.valueAtRisk ?? "?"}`);
+    }
+    lines.push(``);
+  }
+  lines.push(`## Files in this bundle`);
+  lines.push(``);
+  lines.push(`- \`report.json\` — full structured agent output`);
+  lines.push(`- \`Exploit.t.sol\` — Foundry test the agent wrote (if any)`);
+  lines.push(`- \`README.md\` — this file`);
+  lines.push(``);
+  lines.push(`## Next steps for the reviewer`);
+  lines.push(``);
+  lines.push(`1. Read \`Exploit.t.sol\` end-to-end. Convince yourself the asserted "exploit" is a real loss-of-funds path on mainnet, not a fork artifact.`);
+  lines.push(`2. Re-run \`forge test\` against a fresh mainnet fork (not the cached one solhunt used) to confirm reproducibility.`);
+  lines.push(`3. Cross-reference the program's severity rubric. \`severity\` from the agent is best-effort, not authoritative.`);
+  lines.push(`4. If still confident, prepare an Immunefi submission per the program's PoC requirements.`);
+  return lines.join("\n");
+}
 
 // Resolve provider config from CLI flags + env vars
 function buildProviderConfig(options: { provider?: string; model?: string }): ProviderConfig {
@@ -77,6 +146,9 @@ program
   .option("--source-file <path>", "Override Etherscan source fetch with a local .sol file or directory of .sol files. Target address stays as passed (enables scanning fresh-address redeployments).")
   .option("--contract-name <name>", "Contract name to use when --source-file is supplied (defaults to file basename)")
   .option("--redeploy-from <address>", "After anvil starts, clone the runtime bytecode + storage from <address> onto the <target> (fresh) address inside the sandbox's private anvil. Enables fresh-address duels where Claude never sees the original verified mainnet address. Requires --block for a pinned fork.")
+  .option("--via-claude-cli", "Route the agent through `claude -p` (Claude Max subscription) instead of the configured paid provider. Bypasses --provider/--model and the API-key check. Uses the same Red-team plumbing as the duel system.", false)
+  .option("--i-acknowledge-out-of-scope", "Bypass the Immunefi in-scope allowlist (src/safety/in-scope.ts). Only set when you have authorization outside Immunefi. Logged loudly.", false)
+  .option("--findings-dir <path>", "Where to save findings when --via-claude-cli runs. Default: ./findings/<iso-timestamp>-<contract>/", "./findings")
   .option("--dry-run", "Show what would happen without calling the model", false)
   .option("--json", "Output as JSON", false)
   .action(async (target, options) => {
@@ -93,12 +165,55 @@ program
       process.exit(1);
     }
 
+    // Hard rail: in-scope allowlist gates execution for ANY 0x address scan,
+    // regardless of which model provider is used. The rule is "only scan
+    // contracts in an active bug-bounty scope," not "only when paying via
+    // claude-cli." Local .sol files bypass the check (researcher may be
+    // auditing their own code or a CTF). Override with
+    // --i-acknowledge-out-of-scope; that flag is logged loudly to stderr.
+    let inScopeMatch: InScopeTarget | null = null;
+    if (target.startsWith("0x")) {
+      try {
+        inScopeMatch = assertInScopeOrAcknowledged(
+          target,
+          options.iAcknowledgeOutOfScope,
+        );
+        if (inScopeMatch) {
+          console.error(
+            chalk.green(
+              `[in-scope] ${target} matches ${inScopeMatch.program} (${inScopeMatch.contract}) — ${inScopeMatch.programUrl}`,
+            ),
+          );
+        } else {
+          console.error(
+            chalk.yellow(
+              `[OUT-OF-SCOPE OVERRIDE] --i-acknowledge-out-of-scope set for ${target}. ` +
+                `Caller asserts authorization outside Immunefi. This is logged.`,
+            ),
+          );
+        }
+      } catch (err: any) {
+        console.error(chalk.red(err.message));
+        process.exit(1);
+      }
+    }
+
+    // Only validate paid-provider config when we're actually going to use it.
+    // --via-claude-cli routes through `claude -p` (Max subscription) and
+    // does not need ANTHROPIC_API_KEY / OPENROUTER_API_KEY.
     let providerConfig: ProviderConfig;
-    try {
-      providerConfig = buildProviderConfig(options);
-    } catch (err: any) {
-      console.error(chalk.red(err.message));
-      process.exit(1);
+    if (options.viaClaudeCli) {
+      providerConfig = {
+        provider: "claude-cli" as any,
+        model: "claude-opus-4-7",
+      } as ProviderConfig;
+    } else {
+      try {
+        providerConfig = buildProviderConfig(options);
+      } catch (err: any) {
+        console.error(chalk.red(err.message));
+        process.exit(1);
+      }
     }
 
     const spinner = ora("Initializing...").start();
@@ -271,29 +386,47 @@ program
       collector?.setContractSource(sources);
       if (reconData) collector?.setReconData(reconData);
 
-      spinner.text = `Agent analyzing contract (${providerConfig.provider}/${providerConfig.model})...`;
-      const agentResult = await runAgent(
-        {
-          address: target,
-          name: contractName,
-          chain: options.chain,
-          blockNumber: options.block ? parseInt(options.block) : undefined,
-          sources,
-          reconData,
-        },
-        containerId,
-        sandbox,
-        {
-          provider: providerConfig,
-          maxIterations: parseInt(options.maxIterations),
-          toolTimeout: parseInt(process.env.SOLHUNT_TOOL_TIMEOUT ?? "60000"),
-          scanTimeout: parseInt(process.env.SOLHUNT_SCAN_TIMEOUT ?? "3600000"),
-        },
-        (iter, tool) => {
-          spinner.text = `Agent iteration ${iter}: ${tool}`;
-        },
-        collector
-      );
+      const scanTarget = {
+        address: target,
+        name: contractName,
+        chain: options.chain,
+        blockNumber: options.block ? parseInt(options.block) : undefined,
+        sources,
+        reconData,
+      };
+      const agentConfig = {
+        provider: providerConfig,
+        maxIterations: parseInt(options.maxIterations),
+        toolTimeout: parseInt(process.env.SOLHUNT_TOOL_TIMEOUT ?? "60000"),
+        scanTimeout: parseInt(process.env.SOLHUNT_SCAN_TIMEOUT ?? "3600000"),
+      };
+
+      let agentResult;
+      if (options.viaClaudeCli) {
+        spinner.text = `Agent analyzing via claude -p (Max subscription, opus 4.7)...`;
+        agentResult = await runRedTeamViaClaudeCli(
+          scanTarget,
+          containerId,
+          sandbox,
+          agentConfig,
+          (iter, tool) => {
+            spinner.text = `Agent iteration ${iter}: ${tool}`;
+          },
+          collector,
+        );
+      } else {
+        spinner.text = `Agent analyzing contract (${providerConfig.provider}/${providerConfig.model})...`;
+        agentResult = await runAgent(
+          scanTarget,
+          containerId,
+          sandbox,
+          agentConfig,
+          (iter, tool) => {
+            spinner.text = `Agent iteration ${iter}: ${tool}`;
+          },
+          collector
+        );
+      }
 
       // Extract exploit code before container is destroyed
       if (containerId && collector) {
@@ -322,6 +455,87 @@ program
         durationMs: agentResult.durationMs,
         error: agentResult.error,
       };
+
+      // Save findings to disk for ANY 0x address scan. Hard rail: never
+      // auto-submit. The bundle on disk is what a human reviews before any
+      // Immunefi submission. Applies regardless of provider — the rule is
+      // "every scan that produces a report needs a human-review bundle,"
+      // not "only the claude-cli path." Local-source scans (no 0x address)
+      // still get console output but skip the bundle.
+      if (target.startsWith("0x")) {
+        try {
+          const ts = new Date().toISOString().replace(/[:.]/g, "-");
+          const safeName = contractName.replace(/[^a-zA-Z0-9_-]/g, "_");
+          const outDir = pathResolve(options.findingsDir, `${ts}-${safeName}`);
+          mkdirSync(outDir, { recursive: true });
+          writeFileSync(
+            pathJoin(outDir, "report.json"),
+            JSON.stringify(
+              {
+                target,
+                contractName,
+                chain: options.chain,
+                blockNumber: options.block ? parseInt(options.block) : null,
+                inScope: inScopeMatch,
+                outOfScopeOverride: !!options.iAcknowledgeOutOfScope,
+                via: options.viaClaudeCli ? "claude-cli" : providerConfig.provider,
+                model: options.viaClaudeCli ? "claude-opus-4-7" : providerConfig.model,
+                durationMs: scanResult.durationMs,
+                iterations: scanResult.iterations,
+                report: scanResult.report,
+                error: scanResult.error,
+              },
+              null,
+              2,
+            ),
+            "utf-8",
+          );
+          // Persist exploit test if Claude wrote one. Look first in the
+          // host staging dir (preferred), then fall back to the container.
+          const stagingExploit = pathResolve(
+            process.env.SOLHUNT_HOST_STAGING_RED ??
+              process.env.SOLHUNT_HOST_STAGING ??
+              "/workspace/harness-red",
+            "scan/test/Exploit.t.sol",
+          );
+          let exploitSrc: string | null = null;
+          try {
+            exploitSrc = readFileSync(stagingExploit, "utf-8");
+          } catch {
+            // ignore — fall back to container read below
+          }
+          if (!exploitSrc && containerId) {
+            exploitSrc = await sandbox.tryReadFile(
+              containerId,
+              "/workspace/scan/test/Exploit.t.sol",
+            );
+          }
+          if (exploitSrc) {
+            writeFileSync(
+              pathJoin(outDir, "Exploit.t.sol"),
+              exploitSrc,
+              "utf-8",
+            );
+          }
+          // README so a future reviewer (or Clayton on laptop wake-up)
+          // doesn't have to dig into the JSON to understand what they're
+          // looking at.
+          const readme = renderFindingReadme({
+            target,
+            contractName,
+            inScope: inScopeMatch,
+            report: scanResult.report,
+            error: scanResult.error,
+            outDir,
+          });
+          writeFileSync(pathJoin(outDir, "README.md"), readme, "utf-8");
+          console.error(chalk.cyan(`[findings] saved to ${outDir}`));
+        } catch (err: any) {
+          // Log full stack to make disk-full / permissions / missing-staging
+          // diagnoses tractable without re-running the scan.
+          console.error(chalk.red(`[findings] save failed: ${err.stack ?? err.message}`));
+        }
+      }
 
       // Persist to Supabase (fire-and-forget)
       if (collector && target.startsWith("0x")) {

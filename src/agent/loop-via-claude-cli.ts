@@ -3,6 +3,7 @@ import {
   writeFileSync,
   existsSync,
   mkdirSync,
+  rmSync,
   chmodSync,
   createWriteStream,
   readdirSync,
@@ -58,6 +59,16 @@ export async function runRedTeamViaClaudeCli(
   const hostStreamPath = join(hostStagingRoot, "claude-stream.ndjson");
 
   // 1. Seed host staging dir with scan/src + empty test + foundry.toml.
+  // CRITICAL: wipe scan/{src,test} from any prior run first. mkdirSync
+  // recursive is a no-op if the dir already exists, so leftover .sol files
+  // from a previous target would otherwise pollute the new compilation
+  // (e.g. an Abracadabra duel leaves cauldrons/CauldronV4.sol in src/, and
+  // the next scan's forge build chokes on its missing imports).
+  // hostScanRoot already includes the "scan" segment.
+  rmSync(join(hostScanRoot, "src"), { recursive: true, force: true });
+  rmSync(join(hostScanRoot, "test"), { recursive: true, force: true });
+  rmSync(join(hostScanRoot, "out"), { recursive: true, force: true });
+  rmSync(join(hostScanRoot, "cache"), { recursive: true, force: true });
   mkdirSync(join(hostScanRoot, "src"), { recursive: true });
   mkdirSync(join(hostScanRoot, "test"), { recursive: true });
   mkdirSync(hostBinDir, { recursive: true });

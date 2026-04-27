@@ -121,3 +121,101 @@ with what you analyzed and why exploitation was not possible. An honest
   don't rename, don't write to `/tmp`, don't emit the source inline.
 - Minimal > clever. A 40-line test that proves the finding beats a 400-line
   test that tries to exploit three paths at once.
+
+## False-positive disqualifiers (MUST emit found=false)
+
+A `forge test` that passes does NOT mean an exploit. The following patterns
+are environment manipulations, not real attacks. If your test relies on any
+of them to satisfy preconditions, conclude that the access control HOLDS and
+emit `found=false` with a description of what you found and why it's not
+exploitable on mainnet.
+
+### 1. Cheatcodes that grant the attacker privileges they don't have
+
+- `vm.store(target, slot, value)` to bypass a pause flag, set `isInitialized
+  = false`, zero out an admin, or otherwise rewrite state the attacker
+  cannot legitimately modify. Attackers don't have this superpower on
+  mainnet.
+- `vm.prank(admin)` / `vm.prank(owner)` to call admin functions. Pranking as
+  an address whose private key the attacker doesn't control is not an
+  exploit — it just proves admin can do admin things.
+- `vm.etch(target, ...)` to swap the target's bytecode. Attackers can't
+  replace deployed code.
+- `vm.deal(attacker, 1e30)` to give the attacker more value than exists. OK
+  for "the attacker is rich" setup; NOT OK if the test depends on the value
+  not being real.
+
+Valid `vm.prank` uses: pranking as a whale to use their token balance
+realistically (an attacker could flash-borrow it), pranking as `address(0)`
+or a random EOA to test if a function is callable by anyone, pranking as a
+governance executor AFTER demonstrating the attacker won the vote (e.g. via
+flash loans).
+
+### 2. Permanent pause with no privileged caller
+
+If a function is gated by `whenNotPaused` AND the contract's `admin()` is
+`address(0)` AND no other privileged role can call `unpause()`, the pause is
+PERMANENT. There is no legitimate path to lift it. A "vulnerability" you
+have to `vm.store` your way past is not a vulnerability. Note this in your
+report and emit `found=false`.
+
+### 3. Deprecated implementation contracts
+
+If the address you're scanning is an EIP-1967 implementation contract (not
+the proxy users actually call), the contract's storage is meaningless —
+users interact via the proxy, which has its own independent storage. A
+finding on the impl's own storage does NOT translate to a finding on the
+protocol.
+
+Run this preflight before claiming an exploit on a logic contract:
+
+```bash
+# Check whether the proxy you'd target uses this impl as its current logic.
+# If your target IS the impl's address (not the proxy), find the proxy first.
+# The EIP-1967 implementation slot is fixed:
+cast storage <PROXY_ADDR> 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
+```
+
+If the impl slot of the suspected proxy does NOT equal the address you
+scanned, the impl you scanned is DEPRECATED. Any finding against it is moot
+unless you can show some other live system (a different proxy, a directly
+called function from a non-proxy caller) routes through it. Otherwise emit
+`found=false` and explain.
+
+### 4. Functions that don't exist on the live impl
+
+If you're scanning an impl whose code differs from the proxy's current
+delegate, check whether the function you're "exploiting" still exists on
+the proxy's current impl. Use:
+
+```bash
+cast call <PROXY_ADDR> "<function_signature>(...)"
+```
+
+If the call reverts with "selector not found" / fallback revert, the
+function is not part of the live ABI. Whatever it does on the deprecated
+impl's storage is irrelevant.
+
+### Why these rules exist
+
+Every false-positive submission to a bug-bounty program damages the
+researcher's reputation and slows triage of real findings. An honest
+"nothing found" with substantive analysis is more valuable than a passing
+test that requires cheatcodes or attacks dead code.
+
+If you hit any of the four patterns above, the correct output is:
+
+```
+===SOLHUNT_REPORT_START===
+{
+  "found": false,
+  "vulnerability": null,
+  "exploit": {
+    "testFile": "test/Exploit.t.sol",
+    "testPassed": false,
+    "valueAtRisk": null
+  },
+  "notes": "Investigated <function_or_pattern>. Found code-level pattern X but it is non-exploitable because <reason: cheatcode-only / permanent pause / dead impl / function removed>. Details: ..."
+}
+===SOLHUNT_REPORT_END===
+```

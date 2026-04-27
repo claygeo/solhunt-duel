@@ -2,38 +2,37 @@
 
 ## Recommended post
 
-I've been building a lot in 2026. A cannabis pricing scraper. A Miami condo risk tool. An AI agent that exploits DeFi smart contracts.
+I built an autonomous AI agent that finds and exploits DeFi smart contract vulnerabilities. No human in the loop.
 
-I'm committing to the third one.
+Solhunt takes a contract address, forks Ethereum at the exploit block, reads the Solidity source, writes a Foundry exploit test, runs it, iterates on errors, and produces a pass/fail proof.
 
-Solhunt is an autonomous AI agent that finds and exploits smart contract vulnerabilities. No human in the loop: it forks Ethereum at the exploit block, reads source, writes a Foundry test in Solidity, runs it, iterates on errors, and produces a pass/fail proof.
+I ran two benchmarks. The numbers tell different stories:
 
-I ran two benchmarks because the numbers tell different stories:
-
-**Curated set (32 contracts from DeFiHackLabs, Claude Sonnet 4):**
-• **67.7% exploit rate (21/31)**
-• $28.64 total cost
+**Curated set (32 real DeFi hacks, Claude Sonnet 4):**
+• 67.7% exploit rate (21/31)
+• $28.64 total
 • Above Anthropic's SCONE-bench (51.1%) on similar workload
 • Beanstalk ($182M hack): 1m 44s for $0.65
 • DFX Finance ($7.5M reentrancy): 4m 52s for $3.25
 
-**Random sample (95 contracts + Qwen3.5 pre-flight):**
-• **~13% exploit rate**
-• $24.89 total across both models
-• Most failures are sandbox limitations (multi-protocol flash loans, non-standard token storage), not model limitations
+**Random sample (Qwen3.5 + Sonnet, multi-model):**
+• ~13% exploit rate
+• $17.06 total (Qwen $7.76, Sonnet $9.30)
+• Most failures are sandbox limitations, not model limitations
 
-What I actually learned building this:
+Why the huge gap? The curated set was implicitly cherry-picked for contracts with verified source and single-contract attack vectors. The random sample included unverified contracts, multi-protocol flash loan exploits, and non-standard token patterns the sandbox doesn't yet handle. The 67.7% is "what it can do when the problem is approachable." The 13% is "what happens with arbitrary real-world complexity."
 
-→ **AI agents love to "cheat" with vm.prank(admin)** and claim false-positive exploits. Added explicit guardrails after seeing it first-hand.
+What I learned building this:
 
-→ **Budget projections are 50% off reality.** Shipped a cost circuit breaker that physically cannot overspend.
+→ AI agents love to cheat with vm.prank(admin) and claim false-positive exploits. The agent literally wrote "I pranked as admin, access control vulnerability found." No. That's the admin doing admin things. Added guardrails after catching this with strict test_passed validation.
 
-→ **Smaller models have their niche.** Qwen3.5-35B-A3B handled most access-control exploits at $0.07-$0.15 per contract. Sonnet only needed for complex reentrancy + proxy patterns.
+→ Budget projections are 50% off reality. Projected $0.89/contract, actual was $1.34. Shipped a cost circuit breaker that physically cannot overspend.
 
-→ **Sandbox tooling matters more than model intelligence.** Both models hit the same ceiling on contracts requiring flash-loan orchestration across protocols. The model isn't the bottleneck - infrastructure is.
+→ Smaller models have specific niches. Qwen3.5-35B-A3B handled most access-control exploits at $0.07-$0.15 each. Sonnet was only needed for complex reentrancy and proxy patterns.
+
+→ Sandbox tooling matters more than model intelligence. Both models hit the same ceiling on contracts requiring flash-loan orchestration across protocols. The model isn't the bottleneck. Infrastructure is.
 
 Repo: github.com/claygeo/solhunt
-Full write-up: [link]
 
 Open to conversations with security firms, DeFi protocols, and ML infrastructure teams. DMs open.
 
