@@ -149,22 +149,23 @@ Beanstalk replay (1m44s, $0.65, $182M hack): [README link]
 
 ---
 
-## 4. Contest submissions (after Base Azul scan completes)
+## 4. Contest submissions
 
-The Base Azul Solidity sweep is running on the VPS RIGHT NOW (kicked off as a background scan in tmux session `base-azul-scan` on `77.42.83.22:2222`). Expected duration: 1-3 hours wall time depending on contract count.
+### ⚠️ Base Azul — SKIPPED (decision 2026-04-27 evening)
 
-### 4.1 Base Azul on Immunefi
+I had originally queued a Base Azul scan but the recon subagent surfaced two real blockers that made outside voice (agentId `a4d641944bae954bd`) call this off:
 
-- **URL:** https://immunefi.com/audit-competition/audit-comp-base-azul/information/
-- **Ends:** May 4, 2026 20:00 UTC
-- **Pool:** $250K severity-scaled
-- **Workflow:**
-  1. Sunday: I'll have findings queued in `/root/solhunt/findings/<ts>-base-azul/...` on the VPS
-  2. I apply the false-positive checklist (cheatcode bypass / permanent pause / impl-not-proxy) per the RepoDriver lessons
-  3. I draft submission writeups for each surviving finding
-  4. **You review and decide go/no-go on each submission** — this is the credential + reputation gate
-  5. Wednesday: you click submit on Immunefi for the approved findings
-- **Realistic outcome:** $0-30K, likely $0-10K. Even $0 produces forensic per-finding writeups that are portfolio assets.
+1. **Bad fit.** 9 of 10 in-scope contracts are TEE / ZK / dispute-game / cross-protocol-oracle territory. Solhunt's strong zone is access control + reentrancy + logic errors in app-layer DeFi. Only `TEEProverRegistryImpl` is a clean fit — one contract.
+2. **Plumbing blocker.** Solhunt hardcodes Ethereum chainId=1 + ETH_RPC_URL. Base Sepolia is chainId 84532. The `--chain` flag is just a label. 2-4h of patch work needed for any non-Ethereum scan.
+3. **Honest EV is $0-2K, not $10-30K** — the $250K pool figure was severity-scaled across all 10 contracts, weighted toward critical TEE/ZK findings.
+
+**The pivot:** scan Twyne (codex-vetted target, Eth mainnet, no plumbing required) and Drips Tier-E tonight — both are already in the allowlist and have ready-to-fire scripts. Multichain plumbing ships as v1.2 PR Sunday/Monday with proper `/plan-eng-review`. That patch unlocks Arbitrum cold-DM scans (Kresko, D2 Finance, Y2K) AND becomes a citation in the Trailblazer/Optimism/Polygon grant apps ("v1.2 added multichain support").
+
+### 4.1 Twyne (Eth mainnet) — running tonight
+
+- Already in allowlist via codex's outside-voice pick this week
+- Script ready: `scripts/scan-codex-twyne.sh` (autonomous run on VPS)
+- Realistic outcome: probably clean scan, but the value is the **plumbing demonstration** — Twyne being newer/less-audited is the cleaner signal on whether v1.1 finds novel surfaces vs. just replays known CVEs.
 
 ### 4.2 Monetrix on Code4rena
 

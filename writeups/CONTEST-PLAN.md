@@ -5,6 +5,24 @@
 
 ---
 
+## ⚠️ Update 2026-04-27 evening — Base Azul SKIPPED
+
+**Decision (outside voice, agentId a4d641944bae954bd):** skip Base Azul entirely.
+
+**Why:**
+1. **Fit is bad.** 9 of 10 in-scope contracts are TEE/ZK/dispute-game/oracle territory — solhunt's weak zone. Only 1 contract (`TEEProverRegistryImpl`) is access-control fit. Honest expected value across the single addressable slice: **$0-2K, mode = $0** (top auditors are 3 days deep into the TEE/ZK surface; out-finding Spearbit on AWS Nitro CBOR parsing in 5 days with a v1.1 agent is unrealistic).
+2. **Plumbing blocker.** Solhunt hardcodes Ethereum chainId=1 and `ETH_RPC_URL`. Base Sepolia is 84532. The `--chain` CLI flag is just a label, not a real RPC switch. 2-4h of patch work needed — and that patch should ship as a proper v1.2 PR with `/plan-eng-review`, not a rushed hotfix.
+3. **The $250K pool framing was misleading.** $250K is severity-scaled across the entire 10-contract Base L2 upgrade, weighted toward critical TEE/ZK findings. Solhunt's realistic addressable slice = one contract = $0-2K range, not $10K-30K.
+
+**Pivot:**
+- Tonight: scan **Twyne** (codex-vetted target, Ethereum mainnet, in allowlist, scripts/scan-codex-twyne.sh already prepped) and Drips Tier-E (scripts/scan-codex-tier-e.sh).
+- Sunday/Monday: ship multichain patch as v1.2 PR with `/plan-eng-review` per CLAUDE.md gstack discipline. Permanent capability gain — unlocks Arbitrum + Polygon + Base + Optimism scanning. Cite in grant applications.
+- May 4 contest deadline: forfeit Base Azul without guilt.
+
+**What I'm keeping in this plan below:** Monetrix on Code4rena ($22K, Eth mainnet — no plumbing issue). Still mediocre EV given V12 dedup, but it's a cheap shot if Twyne / Drips Tier-E land clean and there's spare time.
+
+---
+
 ## Critical strategic constraint — Code4rena ≠ default platform anymore
 
 Code4rena now runs **Zellic's V12 AI tool** internally on every Solidity competition. V12 findings are auto-shared with all wardens AND judged as known issues. **Duplicates of V12's findings are ineligible for awards.**
