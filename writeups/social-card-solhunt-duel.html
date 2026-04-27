@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>solhunt-duel — social card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #0a0a0a;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #e6e6e6;
+    min-height: 100vh;
+  }
+  /* Card sized 1400x1280 to match the solhunt card's proportions exactly */
+  .card {
+    width: 1400px;
+    height: 1280px;
+    background: #0a0a0a;
+    padding: 60px 80px;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin-bottom: 12px;
+  }
+  .brand-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 52px;
+    font-weight: 800;
+    color: #ff6b1a;
+    letter-spacing: -0.02em;
+  }
+  .brand-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 21px;
+    font-weight: 400;
+    color: #9a9a9a;
+  }
+  .tagline {
+    font-size: 20px;
+    color: #c4c4c4;
+    margin-bottom: 28px;
+    max-width: 1000px;
+    line-height: 1.5;
+  }
+  .hero {
+    text-align: center;
+    margin: 0 0 14px;
+  }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #9a9a9a;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .hero-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 180px;
+    font-weight: 800;
+    color: #ff6b1a;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+  }
+  .hero-unit {
+    font-size: 108px;
+    color: #ff6b1a;
+  }
+  .hero-caption {
+    font-size: 20px;
+    color: #c4c4c4;
+    margin-top: 18px;
+    max-width: 980px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  .hero-caption strong {
+    color: #e6e6e6;
+    font-weight: 600;
+  }
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    margin: 30px 0 22px;
+    padding: 0 40px;
+  }
+  .metric {
+    text-align: center;
+  }
+  .metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 48px;
+    font-weight: 700;
+    color: #e6e6e6;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .metric-value .muted { color: #6b6b6b; }
+  .metric-value .accent { color: #ff6b1a; }
+  .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #9a9a9a;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 12px;
+    font-weight: 500;
+  }
+  .divider {
+    border-top: 1px solid #262626;
+    margin: 22px 0 20px;
+  }
+  .breakdown-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #9a9a9a;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    font-weight: 500;
+  }
+  .breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    margin-bottom: 28px;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 260px 1fr 160px;
+    align-items: center;
+    gap: 22px;
+  }
+  .bar-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    color: #e6e6e6;
+    font-weight: 500;
+  }
+  .bar-track {
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    height: 34px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 14px;
+    min-width: 56px;
+  }
+  .bar-fill-green { background: #7dd3a0; }
+  .bar-fill-amber { background: #ff6b1a; }
+  .bar-fill-muted { background: #4a4a4a; }
+  .bar-fill-coral { background: #e5484d; }
+  .bar-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0a0a0a;
+  }
+  .bar-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #a8a8a8;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .footer {
+    margin-top: auto;
+    padding-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 40px;
+  }
+  .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #a0a0a0;
+    line-height: 1.7;
+  }
+  .pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #e6e6e6;
+    padding: 10px 18px;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    background: #141414;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .pill.accent {
+    border-color: rgba(255, 107, 26, 0.5);
+    color: #ff6b1a;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-name">solhunt-duel</div>
+      <div class="brand-subtitle">adversarial red vs blue audit loop</div>
+    </div>
+    <div class="tagline">
+      Two autonomous AI agents. Red finds and exploits. Blue writes a Solidity patch and proves it holds. They iterate until the contract is hardened &mdash; or until Blue can&rsquo;t.
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-label">centerpiece duel &mdash; dexible access-control hack</div>
+      <div class="hero-number">17.6<span class="hero-unit">m</span></div>
+      <div class="hero-caption">
+        <strong>Red found a different vulnerability than the CVE</strong> &mdash; pivoted on fresh-deploy storage, chained <span style="font-family:'JetBrains Mono',monospace;color:#e6e6e6;">proposeUpgrade &rarr; warp &rarr; upgradeLogic</span> into proxy takeover. <strong>Blue patched in 1 iteration, all 4 gates green.</strong> R2 Red came back empty.
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics-row">
+      <div class="metric">
+        <div class="metric-value">1<span class="muted">/10</span></div>
+        <div class="metric-label">fully hardened</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value"><span class="accent">3.2</span><span style="font-size:32px;color:#8a8a8a;">h</span></div>
+        <div class="metric-label">total benchmark wall</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">100<span style="font-size:36px;">%</span></div>
+        <div class="metric-label">gates held (n=5)</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Honest breakdown -->
+    <div class="breakdown-title">run-once on 10 real defi hacks &middot; no retries &middot; sha-pinned manifest</div>
+    <div class="breakdown">
+      <div class="bar-row">
+        <div class="bar-label">hardened (real)</div>
+        <div class="bar-track"><div class="bar-fill bar-fill-green" style="width: 10%;"><span class="bar-count">1</span></div></div>
+        <div class="bar-note">Dexible</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">incomplete patch caught</div>
+        <div class="bar-track"><div class="bar-fill bar-fill-amber" style="width: 10%;"><span class="bar-count">1</span></div></div>
+        <div class="bar-note">Floor Protocol</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">blue failed</div>
+        <div class="bar-track"><div class="bar-fill bar-fill-coral" style="width: 50%;"><span class="bar-count">5</span></div></div>
+        <div class="bar-note">budget limit</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">red gave up</div>
+        <div class="bar-track"><div class="bar-fill bar-fill-muted" style="width: 30%;"><span class="bar-count">3</span></div></div>
+        <div class="bar-note">methodology limit</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">infra config gap</div>
+        <div class="bar-track"><div class="bar-fill bar-fill-muted" style="width: 10%;"><span class="bar-count">1</span></div></div>
+        <div class="bar-note">Seneca</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="meta">
+        10 contracts from DeFiHackLabs<br>
+        Claude Opus 4.7 via `claude -p` subprocess<br>
+        Run-once protocol &middot; SHA-pinned manifest committed pre-run
+      </div>
+      <div class="pills">
+        <div class="pill">Foundry</div>
+        <div class="pill">Anvil fork</div>
+        <div class="pill">anvil_setCode</div>
+        <div class="pill accent">Opus 4.7</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
