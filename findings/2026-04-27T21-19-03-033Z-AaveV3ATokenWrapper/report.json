@@ -1,0 +1,40 @@
+{
+  "target": "0xfaba8f777996c0c28fe9e6554d84cb30ca3e1881",
+  "contractName": "AaveV3ATokenWrapper",
+  "chain": "ethereum",
+  "blockNumber": null,
+  "inScope": {
+    "address": "0xfaba8f777996c0c28fe9e6554d84cb30ca3e1881",
+    "program": "Twyne",
+    "programUrl": "https://immunefi.com/bug-bounty/twyne/",
+    "contract": "awstETHWrapper",
+    "scrapedAt": "2026-04-27",
+    "notes": "Codex runner-up #2. Wrapper = share/math logic; classic donation/rounding attack territory."
+  },
+  "outOfScopeOverride": false,
+  "via": "claude-cli",
+  "model": "claude-opus-4-7",
+  "durationMs": 308490,
+  "iterations": 21,
+  "report": {
+    "contract": "0xfaba8f777996c0c28fe9e6554d84cb30ca3e1881",
+    "contractName": "AaveV3ATokenWrapper",
+    "chain": "ethereum",
+    "blockNumber": 0,
+    "found": true,
+    "vulnerability": {
+      "class": "access-control",
+      "severity": "medium",
+      "functions": [
+        "skim"
+      ],
+      "description": "AaveV3ATokenWrapper.skim(address receiver) is unauthenticated and does not pull assets from the caller. It reads the wrapper's full underlying-token (wstETH) balance, supplies it to AAVE on the wrapper's behalf, and mints freshly computed ERC4626 shares to an attacker-chosen receiver. Any underlying tokens donated to the wrapper (e.g. by a user mistakenly calling ERC20.transfer instead of depositATokens/depositWithPermit) can therefore be stolen by anyone who calls skim first — they receive shares backed by the victim's wstETH."
+    },
+    "exploit": {
+      "script": "test/Exploit.t.sol",
+      "executed": true,
+      "output": "Compiling 1 files with Solc 0.8.34\nSolc 0.8.34 finished in 488.04ms\nCompiler run successful!\n\nRan 1 test for test/Exploit.t.sol:ExploitTest\n[PASS] test_anyoneCanSkimDonatedAssets() (gas: 387277)\nLogs:\n  attacker shares stolen: 998533575456430027\n  victim donated (wei): 1000000000000000000\n\nSuite result: ok. 1 passed; 0 failed; 0 skipped; finished in 6.61ms (6.10ms CPU time)\n\nRan 1 test suite in 27.95ms (6.61ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)\n",
+      "valueAtRisk": "Any underlying (wstETH) accidentally sent to the live wrapper: ~0.998 shares per 1 wstETH donated. Scales 1:1 with donations."
+    }
+  }
+}

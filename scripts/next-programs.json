@@ -1,0 +1,23 @@
+{
+  "_comment": "Populated 2026-04-27 by /codex outside-voice strategy v3. Loaded by autonomous-chain.sh at Stage 3. Each target gets one scan via Etherscan source (no impl override) — fine for non-proxy contracts. Proxy targets would need a separate fetch-impl pass.",
+  "programs": [
+    {
+      "name": "Inverse Finance (FiRM)",
+      "url": "https://immunefi.com/bug-bounty/inversefinance/",
+      "rationale": "Per-market contracts, isolated, prior exploit history (Apr/Jun 2022). Solhunt's 75-83% zone (access-control + reentrancy). Max $100k. KYC required.",
+      "targets": [
+        {"name": "InverseDBR", "address": "0xad038eb671c44b853887a7e32528fab35dc5d710"},
+        {"name": "InverseFiRMCRVMarket", "address": "0x63fad99705a255fe2d500e498dbb3a9ae5aa1ee8"},
+        {"name": "InverseFiRMWETHMarket", "address": "0x63df5e23db45a2066508318f172ba45b9cd37035"}
+      ]
+    },
+    {
+      "name": "ENS",
+      "url": "https://immunefi.com/bug-bounty/ens/",
+      "rationale": "NO-KYC, $250k cap. BaseRegistrar is access-control heavy. Heavy audit history but the no-KYC + payout makes one shot worth it.",
+      "targets": [
+        {"name": "ENSBaseRegistrarImplementation", "address": "0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85"}
+      ]
+    }
+  ]
+}
