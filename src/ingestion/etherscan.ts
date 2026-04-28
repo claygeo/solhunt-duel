@@ -53,7 +53,10 @@ export async function fetchContractSource(
   const data: any = await response.json();
 
   if (data.status !== "1" || !data.result?.[0]) {
-    throw new Error(`Etherscan API error: ${data.message ?? "Unknown error"}`);
+    throw new Error(
+      `Etherscan API error (chainId=${chainId}): ${data.message ?? "Unknown error"}. ` +
+        `If you scanned a non-Ethereum address, did you pass --chain <name>?`,
+    );
   }
 
   const result = data.result[0];

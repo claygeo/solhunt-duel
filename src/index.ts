@@ -18,6 +18,7 @@ import { runAgent } from "./agent/loop.js";
 import { runRedTeamViaClaudeCli } from "./agent/loop-via-claude-cli.js";
 import { resolveProvider, type ProviderConfig } from "./agent/provider.js";
 import { assertInScopeOrAcknowledged, type InScopeTarget } from "./safety/in-scope.js";
+import { resolveChain, getRpcUrl, explorerAddressUrl } from "./config/chains.js";
 import { calculateCost } from "./reporter/format.js";
 import { renderReport, renderBenchmarkTable } from "./reporter/markdown.js";
 import type { ScanResult } from "./reporter/format.js";
@@ -41,10 +42,17 @@ function renderFindingReadme(args: {
   report: any;
   error?: string;
   outDir: string;
+  chain?: { name: string; explorerUrl: string; explorerLabel: string };
 }): string {
   const lines: string[] = [];
   lines.push(`# Solhunt finding bundle\n`);
-  lines.push(`- **Target address:** \`${args.target}\``);
+  if (args.chain) {
+    const explorer = `${args.chain.explorerUrl}/address/${args.target}`;
+    lines.push(`- **Target address:** \`${args.target}\` ([${args.chain.explorerLabel}](${explorer}))`);
+    lines.push(`- **Chain:** ${args.chain.name}`);
+  } else {
+    lines.push(`- **Target address:** \`${args.target}\``);
+  }
   lines.push(`- **Contract name:** ${args.contractName}`);
   if (args.inScope) {
     lines.push(`- **Program:** [${args.inScope.program}](${args.inScope.programUrl})`);
@@ -138,7 +146,8 @@ program
   .command("scan")
   .description("Scan a smart contract for vulnerabilities")
   .argument("<target>", "Contract address (0x...) or path to .sol file")
-  .option("--chain <chain>", "Blockchain network", "ethereum")
+  .option("--chain <chain>", "Blockchain network (ethereum, arbitrum, optimism, base, polygon, base-sepolia)", "ethereum")
+  .option("--rpc-url <url>", "RPC endpoint override. Wins over --chain's default env var. Required if the per-chain env var (e.g. ARB_RPC_URL) is unset.")
   .option("--block <number>", "Block number for fork")
   .option("--provider <name>", "Model provider (ollama, openai, openrouter, anthropic)", process.env.SOLHUNT_PROVIDER ?? "ollama")
   .option("--model <model>", "Model to use (overrides provider default)")
@@ -159,9 +168,13 @@ program
       process.exit(1);
     }
 
-    const rpcUrl = process.env.ETH_RPC_URL;
-    if (!rpcUrl) {
-      console.error(chalk.red("ETH_RPC_URL not set. Need an RPC endpoint for blockchain forking."));
+    let chainConfig: ReturnType<typeof resolveChain>;
+    let rpcUrl: string;
+    try {
+      chainConfig = resolveChain(options.chain);
+      rpcUrl = getRpcUrl(chainConfig, options.rpcUrl);
+    } catch (err: any) {
+      console.error(chalk.red(err.message));
       process.exit(1);
     }
 
@@ -268,8 +281,8 @@ program
           options.contractName ??
           (sources[0].filename.replace(/\.sol$/, "").split("/").pop() || "Contract");
       } else if (target.startsWith("0x")) {
-        spinner.text = `Fetching contract source from Etherscan...`;
-        const info = await fetchContractSource(target, etherscanKey!, 1);
+        spinner.text = `Fetching contract source from Etherscan (chain=${chainConfig.name}, chainId=${chainConfig.chainId})...`;
+        const info = await fetchContractSource(target, etherscanKey!, chainConfig.chainId);
         sources = info.sources;
         contractName = info.name;
       } else {
@@ -527,6 +540,11 @@ program
             report: scanResult.report,
             error: scanResult.error,
             outDir,
+            chain: {
+              name: chainConfig.name,
+              explorerUrl: chainConfig.explorerUrl,
+              explorerLabel: chainConfig.explorerLabel,
+            },
           });
           writeFileSync(pathJoin(outDir, "README.md"), readme, "utf-8");
           console.error(chalk.cyan(`[findings] saved to ${outDir}`));
