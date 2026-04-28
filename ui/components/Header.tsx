@@ -14,9 +14,16 @@ export default function Header() {
             dexible
           </span>
         </div>
-        <div className="shrink-0 font-sans text-[10px] text-mute sm:text-[11px]">
-          <span className="hidden sm:inline">autonomous red vs blue audit loop</span>
-          <span className="sm:hidden">red vs blue</span>
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+          <a
+            href="/leaderboard/"
+            className="font-mono text-[11px] tracking-[0.08em] text-amber underline-offset-4 hover:underline sm:text-[12px]"
+          >
+            LEADERBOARD
+          </a>
+          <span className="hidden font-sans text-[10px] text-mute sm:inline sm:text-[11px]">
+            autonomous red vs blue audit loop
+          </span>
         </div>
       </div>
     </header>

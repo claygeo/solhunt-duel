@@ -8,6 +8,7 @@ You give it a contract address. It either (a) writes a runnable Foundry exploit 
 
 - Repo: https://github.com/claygeo/solhunt-duel
 - Live UI demo: https://solhunt-duel.netlify.app
+- **Public benchmark leaderboard: https://solhunt-duel.netlify.app/leaderboard/** (click-to-expand round-by-round, all 4 gates per duel, honest convergence breakdown)
 - Beanstalk case study: [docs/CASE_STUDY_BEANSTALK.md](docs/CASE_STUDY_BEANSTALK.md)
 - Full benchmark JSON: [benchmark/dataset.json](benchmark/dataset.json)
 - Per-vuln-class breakdown: [section below](#solhunt-by-vulnerability-class)
