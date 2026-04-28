@@ -34,12 +34,14 @@ log() {
   echo "[$(date -u +%H:%M:%SZ)] $*" | tee -a "${LOG}"
 }
 
-# Pre-flight: ARB_RPC_URL must be set
+# Pre-flight: resolve ARB_RPC_URL with a public-RPC fallback.
+# Cold-DM scans target "latest" state, no archive state needed, so a public
+# Arbitrum RPC is acceptable. For grant-quality scans or contests, swap in
+# a paid Alchemy / QuickNode / Tenderly key.
 if [ -z "${ARB_RPC_URL:-}" ]; then
-  log "ERROR: ARB_RPC_URL not set. Cannot scan Arbitrum without it."
-  log "Set it via: export ARB_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/<your-key>"
-  echo "ERROR_NO_RPC" > "${META_DIR}/STATUS"
-  exit 1
+  export ARB_RPC_URL="https://arb1.arbitrum.io/rpc"
+  log "WARN: ARB_RPC_URL not set, using public fallback ${ARB_RPC_URL}"
+  log "      For better reliability, set ARB_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/<key>"
 fi
 
 TARGETS=(
