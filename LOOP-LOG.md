@@ -312,6 +312,118 @@ Tier 3 (if time):
 
 ---
 
+---
+
+## Iteration #5 — REDIRECTED HARD to Solhunt-Duel core (2026-04-28 ~23:30)
+
+**Wake reason:** Operator interrupted: "are we still doing solhunt duel right?" — caught my drift in iter #3-#4 (HL bot debug + job apps). Confirmed: yes, Solhunt-Duel is the centerpiece. Operator said "yeah go hard with solhunt-duel."
+
+**Did not wait for ScheduleWakeup** — pivoted immediately to highest-leverage Solhunt-Duel work.
+
+### Built this iteration (commit d83ec84, pushed to claygeo/solhunt-duel master)
+
+**1. Leaderboard publicly hosted** (the inbound funnel)
+- Copied `docs/leaderboard.html` → `ui/public/leaderboard/index.html`
+- Next.js serves it statically at `solhunt-duel.netlify.app/leaderboard/` after deploy
+- Added LEADERBOARD nav link in Header (amber, prominent)
+- `next.config.js` rewrites for `/leaderboard` and `/leaderboard/` (dev-mode coverage; production handled by Netlify defaults)
+- README updated with prominent leaderboard link
+- Verified in dev preview port 3020: both homepage Header link AND `/leaderboard/` route render correctly
+
+**2. Friday weekly cadence template** (`docs/WEEKLY-CADENCE-TEMPLATE.md`)
+- The recurring drumbeat that turns Solhunt-Duel into a recruiting funnel
+- Standard format + 3 variants (failures-only week, cinematic result, correction week)
+- Pre-flight + posting checklists
+- Tracking sheet template (per-week engagement)
+- Off-ramp: when to STOP posting (week-8 review criteria)
+- Hard rule: never claim what you can't link to forge-test PASS
+
+**3. Substack post #1 draft** (`docs/SUBSTACK-POST-1-DRAFT.md`)
+- 67.7% → 13.7% gap origin story angle (most credibility-building)
+- ~1500 words, draft only — requires operator + /codex review before publishing
+- Pre-publish checklist + what-not-to-do guard rails
+- Connects 67.7%-vs-13% gap → why Solhunt-Duel needs server-side gates
+
+### Did NOT do (deferred to operator morning)
+
+- **Run new duel on fresh contract** — would burn API credits + needs setup verification I can't do autonomously without risking bad runs polluting the leaderboard. Better as operator's morning task with full attention.
+- **Modal Labs job app** — careers page JS-rendered, deferred from iter #4
+- **Job apps in general** — codex verdict last iter said skip Anthropic; Sourcegraph IC2 staged in career-ops/ but local-only (santifer upstream, no personal fork)
+
+### Reverted (auto-generated Next.js mods I caught before commit)
+
+- `ui/next-env.d.ts` and `ui/tsconfig.json` — Next.js dev server auto-modified (jsx="preserve" → "react-jsx", added typed-routes import). Reverted to avoid breaking production build. They'll regenerate cleanly on operator's next `next dev`.
+
+### Iteration #6 plan (next wake, 1800s)
+
+Tier 1 (Solhunt-Duel core only — operator's directive):
+- [ ] Vuln corpus expansion: scaffold script to ingest SWC registry contracts (target: bring corpus from 32 curated → 50+ random for next benchmark run)
+- [ ] Begin draft of v2 benchmark expansion proposal (DO NOT execute — needs /plan-eng-review first; this is the proposal doc only)
+- [ ] Add a `docs/PROOF.md` showing the gate code, so recruiters can read the gate logic without cloning the repo
+
+Tier 2 (if time):
+- [ ] Cleanup: file `SUBMISSION-CANDIDATE-skim.md` is contradicting REVIEWED-REJECTED. Add a header comment marking it superseded (don't delete — leave for operator's call)
+- [ ] Stage 1 more named-target Solhunt-Duel-narrative job app (Cursor or Replit, not Anthropic per codex verdict)
+
+Hard skip: Job apps, HL bot work, anything not Solhunt-Duel-core unless operator redirects again.
+
+**Scheduled next wake:** 1800s (30 min)
+
+---
+
+---
+
+## Iteration #6 — research artifacts (2026-04-28 ~midnight)
+
+**Wake reason:** /loop fired again from operator's command (effectively continuing iter #5's queued work).
+
+**Per master plan priority queue, focused on highest-leverage research artifacts that recruiters/engineers actually read when evaluating Solhunt-Duel.** Hard skip: anything not Solhunt-Duel-core (per operator's "go hard with solhunt-duel" directive).
+
+### Built this iteration
+
+**1. `docs/PROOF.md`** — defends the load-bearing claim "four server-side gates the LLMs cannot see or modify"
+- Walks through `src/sandbox/patch-harness.ts` line-by-line for all 4 gates
+- Quotes actual TypeScript source (lines 11-28 for the interface, 109-115 for storageLayoutChanged, 162-177 for exploitNeutralized, 187-198 for freshAttackerNeutralized, 204-216 for benignPassed)
+- Sanity baseline (line 133-160) explained: catches false-positive Red runs from vm.etch quirks
+- "What the LLM sees" / "What the LLM does NOT see" sections — falsifiable claim audit
+- Honest limitations section (gates falsify positive claims, not negative ones; MEV / cross-contract / non-suite bugs out of scope)
+- Closes with generalization to other agent eval domains (coding agents, tool-use agents, research agents)
+
+**2. `docs/PLAN-V2-BENCHMARK-EXPANSION.md`** — the /plan-eng-review input doc for v2 corpus
+- Today's corpus diagnosis: 32 contracts / 6 vuln classes / 0 adversarial-no-find / unknown false-positive rate
+- Proposed v2: 52 contracts / 14+ classes / 4 tiers (SWC synthetic, Code4rena historical, **adversarial-no-find**, hard-difficulty multi-contract)
+- Tier C (adversarial-no-find) is the key credibility move — measures false-positive rate, currently unmeasured
+- Phase order: schema/tooling → Tier C first (highest credibility lift) → Tier A/B fill-in → Tier D (document expected failures) → re-run + publish
+- 5 risks to challenge in /plan-eng-review explicitly listed
+- 5 decisions sought from operator + /plan-eng-review + /codex
+- ~9 work-day estimate (or ~6-9 hours with Claude+gstack at peak compression)
+- Budget cap: $50 API for v2 run
+
+**3. `SUBMISSION-CANDIDATE-skim.md` cleanup** — added SUPERSEDED-2026-04-28 header
+- Points to REVIEWED-REJECTED-2026-04-28.md as authoritative
+- Kept the body as historical context (the path from finding → outside-voice review → correct rejection IS the discipline working)
+
+### Did NOT do (deferred — strict Solhunt-Duel-only mode)
+
+- Vuln corpus expansion script (the actual code to ingest SWC + Code4rena) — gated behind /plan-eng-review of the proposal doc above. Hard rule per gstack discipline.
+- Job apps (any) — operator-only mode unless directly Solhunt-Duel-narrative
+- Modal Labs (deferred from iter #4)
+
+### Iteration #7 plan (next wake, 1800s)
+
+Tier 1 (Solhunt-Duel core only):
+- [ ] **ARCHITECTURE.md polish for interview readability** — current state is dev docs, target is "5-min walkthrough that reads cleanly cold"
+- [ ] **Pre-stage interview prep doc** — `docs/INTERVIEW-WALKTHROUGH-5MIN.md` — script for explaining Solhunt-Duel architecture in 5 minutes for screen calls
+- [ ] **Cleanup any stale doc references to old leaderboard URL** (everything should point to `/leaderboard/` now)
+
+Tier 2 (if time):
+- [ ] Inspect-AI / Anthropic SDK PR opportunity research — find ONE substantive PR target
+- [ ] Re-check VPS state via SSH (whether autonomous-chain.sh sidecars work etc.) — research-only
+
+**Scheduled next wake:** 1800s (30 min)
+
+---
+
 ## Operator wake-up summary (will be in last iteration before morning)
 
 [empty — will populate near morning]
