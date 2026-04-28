@@ -235,6 +235,37 @@ const TARGETS: InScopeTarget[] = [
     scrapedAt: "2026-04-27",
     notes: "Codex chain #1. FiRM WETH Market.",
   },
+  {
+    address: "0x3474ad0e3a9775c9f68b415a7a9880b0cab9397a",
+    program: "Inverse Finance",
+    programUrl: "https://immunefi.com/bug-bounty/inversefinance/",
+    contract: "FiRMcvxCRVMarket",
+    scrapedAt: "2026-04-27",
+    notes: "Tier-N batch. Convex-wrapped CRV — reward-token edge cases interact with FiRM accounting. Highest weirdness-of-collateral score in FiRM family.",
+  },
+
+  // Parallel Protocol V3 — https://immunefi.com/bug-bounty/parallel/
+  // Per outside-voice Tier-N research (agentId a007685eaf80410ba, 2026-04-27 evening).
+  // Listed Oct 2 2025 (fresh listing). 5 audits (Bail Security + Zenith + Certora etc.).
+  // Solidity 0.8.28, BSL 1.1, ~1000 LOC. Custom CDP swap + Chainlink oracle.
+  // Strong-zone fit: access control + custom collateral logic + accounting.
+  // Max payout: per Immunefi page (verify before submission).
+  {
+    address: "0x506ba37aa8e265be445913b9c4080852277f3c5a",
+    program: "Parallel Protocol V3",
+    programUrl: "https://immunefi.com/bug-bounty/parallel/",
+    contract: "Swapper",
+    scrapedAt: "2026-04-27",
+    notes: "Tier-N batch. Custom CDP swap + permit + Chainlink oracle. Live ~10mo, listed Oct 2025. Custom invariants = real chance of logic/accounting bug.",
+  },
+  {
+    address: "0xa9c21cf291ad935e0c9b05a55a42254fb159181d",
+    program: "Parallel Protocol V3",
+    programUrl: "https://immunefi.com/bug-bounty/parallel/",
+    contract: "GettersDiamondFacet",
+    scrapedAt: "2026-04-27",
+    notes: "Tier-N batch (lower priority). 25 view fns + 1 state-changing (isWhitelistedForCollateral). LibOracle/LibGetters/LibManager interactions can hide whitelist-bypass.",
+  },
 
   // ENS (Ethereum Name Service) — https://immunefi.com/bug-bounty/ens/
   // Per /codex chain pick #3 (priority for anonymity — NO KYC). Max $250k.
