@@ -158,8 +158,8 @@
       <div class="hero-card">
         <div class="label">Curated 32-Contract Benchmark</div>
         <div class="value accent">67.7%</div>
-        <div class="detail">Exploit rate at <strong>$0.89/contract</strong>. Above Anthropic's published SCONE-bench at 51.1%.</div>
-        <div class="citation">SCONE-bench reference: <a href="https://www.anthropic.com/research" target="_blank" rel="noopener">Anthropic Research</a></div>
+        <div class="detail">Exploit rate at <strong>$0.89/contract</strong> on a curated DeFiHackLabs subset (verified-source, single-contract attack vectors).</div>
+        <div class="citation">Honest comparison: see the 13% random-sample gap at right.</div>
       </div>
       <div class="hero-card">
         <div class="label">Random 95-Contract Eval (Honest)</div>
@@ -173,6 +173,7 @@
     <h2>Phase 4 — Red/Blue Duel Results
       <span class="sub">10 contracts · honest convergence breakdown · click row to expand round-by-round</span>
     </h2>
+    <p style="font-size: 13px; color: var(--text-dim); margin-top: -8px; margin-bottom: 16px;">For an apples-to-apples comparison to Anthropic's SCONE-bench (405 random contracts, 51.1% exploit rate), see <a href="https://red.anthropic.com/2025/smart-contracts/" target="_blank" rel="noopener" style="color: var(--accent);">the SCONE-bench paper</a>. Their benchmark is random-draw at scale; the 67.7% number above is curated. The honest random-sample comparison is the 13% card on the right.</p>
     <div class="summary-grid" style="margin-bottom: 20px;">
       <div class="stat-card"><div class="stat-label">Total Runs</div><div class="stat-value">10</div></div>
       <div class="stat-card"><div class="stat-label">Hardened (Blue patched)</div><div class="stat-value" style="color: var(--green);">1</div><div class="stat-sub">Dexible · all 4 gates passed</div></div>
