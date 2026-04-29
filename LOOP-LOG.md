@@ -424,6 +424,73 @@ Tier 2 (if time):
 
 ---
 
+---
+
+## Iteration #7 — no-wait mode (operator: "just keep building")
+
+**Wake reason:** Operator interrupted iter #7 ScheduleWakeup wait with "why dont you just keep working, why wait till the morning, just keep building." Executed iter #7 work continuously without waiting for the 20:08 fallback.
+
+### Built this iteration
+
+**1. /plan-eng-review on V2 benchmark plan (parallel agent)**
+- Verdict: **APPROVE WITH CHANGES**
+- 3 blockers identified:
+  1. No reproducibility protocol (single-run-per-contract on stochastic agent ≠ benchmark)
+  2. Tier C N=5 too small (1/5 = 20% ± enormous CI; need ≥10 with severity-weighted scoring + near-miss controls)
+  3. Tier C false-find disclosure flow undefined (must close BEFORE sourcing, not after)
+- Other gaps: model version pinning, seed/temp spec, no held-out set, no inter-rater rubric
+- Phase 1 schema work + Phase 2 sourcing → run in parallel (saves 1 day)
+
+**2. /codex outside-voice on V2 plan (parallel agent)**
+- Verdict: **GO with constraints**
+- Tier C downside math is asymmetric in operator's favor IF pre-committed to publish-whatever-happens
+- Real failure mode: operator chickens out post-result and silently cuts Tier C (PRE-COMMIT THE DISCLOSURE POST)
+- Inspect-AI integration: sequential not parallel (corpus first, framework second)
+- Operator's 1.5 YOE filter: v2 only flips outcomes for ~15-20% of funnel (the high-ceiling AI-safety path)
+- 6-day hard cap on v2 work; if budget runs out, ship Tier C standalone — gravy is gravy
+
+**3. Integrated both reviews into PLAN-V2-BENCHMARK-EXPANSION.md**
+- Tier C: 5 → 10 contracts (statistical, not vibe). Includes 2-3 near-miss controls. Severity-weighted scoring.
+- Reproducibility protocol added: n=3, model version `claude-sonnet-4-20250514` pinned, temperature/top-p specified, prompt git SHA logged
+- Tier C disclosure pre-commitment (drafted text written into the plan; operator can't quietly cut Tier C post-result)
+- 6-day hard cap with kill criteria (Phase 2 standalone if Phase 3+ runs out of time)
+- Pause/reassess gate: if Tier C FPR > 80%, halt before Phase 3 spend
+- Phase 1 schema parallel with Phase 2 sourcing
+- Total revised budget: $110-150 API (was $30-50; bumped for n=3 × 57 contracts)
+
+**4. ARCHITECTURE.md polish** — recruiter-readable rewrite
+- Added 60-second TL;DR at top with cross-links to leaderboard, PROOF.md, V2 plan
+- Added "Two Projects" comparison table (Solhunt vs Solhunt-Duel)
+- New Solhunt-Duel architecture section: full mermaid sequence diagram of Red↔Blue duel + verifyPatch flow + 4 gates table
+- Convergence taxonomy (HARDENED, BLUE_FAILED, RED_FAILED, SAME_CLASS_ESCAPED, TIMEOUT) with definitions
+- Original Solhunt sections preserved (renamed for clarity)
+- Updated data model ER diagram with duel_runs + duel_rounds tables
+- New "Why fresh-address bytecode cloning" design decision (Solhunt-Duel-specific gotcha)
+- Honest limitations section: small-N, sandbox limits, MEV invisibility, multi-contract chain failures
+- Added Claude Code CLI backend to model-abstraction diagram (Max-subscription overnight runs)
+
+**5. INTERVIEW-WALKTHROUGH-5MIN.md** — screen-call architecture script
+- 5-beat structure (premise / setup / 4 gates / honest failure / what's next)
+- ~750-900 words spoken, fits 5 minutes with interviewer-interrupt buffer
+- Variants: 3-min screening, 15-min deep technical, behavioral/hiring-manager
+- "What NOT to say" list (no SCONE direct compare, no oversell convergence, no startup pitch, no trash adjacent work)
+- Practice notes: read aloud twice, time yourself, the 67%/13% beat is most underdone on first try
+- Honest meta: match artifact to audience (Curaleaf for payments roles, Solhunt-Duel for AI safety / agent eval)
+
+### Iter #8 plan (continuing without wait)
+
+Tier 1:
+- [ ] Tier C contract candidate list seed — research 7-10 audited-clean mainnet contracts for V2 sourcing (no execution, just candidate research)
+- [ ] Code4rena Tier B candidate research — find 3-5 high-confidence Code4rena finding candidates (verified mainnet contracts, single-contract attack vectors, vuln class our corpus lacks)
+
+Tier 2 (if time):
+- [ ] Inspect-AI PR opportunity research — find ONE substantive PR target on Anthropic's eval framework
+- [ ] README.md polish — recruiter-front-door optimization
+
+**Strict skip:** any operator-only task (Substack publish, Sourcegraph submit, etc.).
+
+---
+
 ## Operator wake-up summary (will be in last iteration before morning)
 
 [empty — will populate near morning]

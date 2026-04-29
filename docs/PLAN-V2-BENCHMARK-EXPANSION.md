@@ -1,10 +1,19 @@
-# PLAN — V2 Benchmark Expansion (32 → 50+ contracts)
+# PLAN — V2 Benchmark Expansion (32 → 57 contracts)
 
-> **Status:** PLAN ONLY. This document is the input to a `/plan-eng-review` session, NOT a green-lit work order. Operator must read + approve before any code lands. /codex outside-voice review also required before execution per gstack discipline.
+> **Status:** REVIEWED 2026-04-28 by /plan-eng-review (verdict: APPROVE WITH CHANGES) and /codex outside-voice (verdict: GO with constraints). Both reviews integrated below. Operator must still sign off before execution per gstack discipline.
 >
-> **Author:** Claude (autonomous loop, iteration #6, 2026-04-28).
-> **Why now:** Per master 90-day plan, the leaderboard's biggest credibility lift is corpus expansion — 32 curated contracts is a "small-N" tell. 50+ contracts with broader vuln-class coverage moves the conversation from "demo on cherry-picked exploits" to "benchmark with statistical signal."
-> **Goal:** before publishing v2 leaderboard numbers, expand corpus to ≥50 contracts spanning ≥8 distinct vuln classes, with at least 5 adversarial-no-find contracts (no known bug — agent should report no-find, not fabricate one).
+> **Author:** Claude (autonomous loop, iteration #6, 2026-04-28). Updated iter #7 after both reviews.
+> **Why now:** Per master 90-day plan, the leaderboard's biggest credibility lift is corpus expansion — 32 curated contracts with no false-positive measurement is a "vibe not measurement" tell. 50+ contracts with broader vuln-class coverage AND a measured false-positive rate moves the conversation from "demo on cherry-picked exploits" to "this person thinks like an eval researcher."
+> **Goal:** before publishing v2 leaderboard numbers, expand corpus to **57 contracts** spanning ≥14 distinct vuln classes, with **10 adversarial-no-find contracts** (audited, no known bug — agent should report no-find, not fabricate one) including 2-3 near-miss controls.
+
+## What changed after review
+
+- **Tier C: 5 → 10 contracts** (eng-review: 5 is a vibe, 10 is a measurement). Includes 2-3 near-miss controls (audited contracts that had a finding patched in audit — agent should NOT re-find the patched bug). Severity-weighted scoring, not binary find/no-find.
+- **Reproducibility protocol added** (eng-review: single-run-per-contract on stochastic agent isn't a benchmark, it's a screenshot). N=3 runs per contract, median + IQR reported. Model version pinned (`claude-sonnet-4-20250514` — exact build, not the floating tag). Temperature/top_p specified.
+- **Tier C disclosure post written BEFORE sourcing** (codex: real failure mode is operator chickening out post-result and silently cutting Tier C). Pre-commit to publish whatever happens.
+- **Phase 1 (schema) parallel with Phase 2 sourcing** (eng-review: no dependency, save 1 day).
+- **6-day hard cap with kill criteria** (codex: ship Tier C alone if budget runs out, gravy is gravy).
+- **Phase 2 (Tier C standalone) before any other tier** with pause-and-reassess gate if FPR > 80%.
 
 ## Today's corpus (the baseline)
 
@@ -34,20 +43,35 @@ Three structural problems:
 
 3. **Distribution doesn't match real audit caseload.** On Code4rena / Sherlock, the lived distribution skews toward business-logic bugs (oracle deviation, liquidation math, emission curves) and away from the OWASP-style classics (reentrancy, overflow, etc.) that dominate DeFiHackLabs. Our corpus is good for "does this agent know reentrancy" — bad for "would this agent be useful on a real audit competition."
 
-## Proposed v2 corpus structure
+## Proposed v2 corpus structure (post-review)
 
-Target: **52 contracts**, additive (the existing 32 stay in for continuity).
+Target: **57 contracts**, additive (the existing 32 stay in for continuity).
 
-### New 20 contracts breakdown
+### New 25 contracts breakdown
 
 | Tier | Count | Source | Purpose |
 |---|---|---|---|
 | **A. SWC-registry coverage** | 8 | SWC registry test cases (synthetic) | Cover 8 new SWC classes the corpus lacks |
 | **B. Code4rena historical** | 5 | Code4rena finding archive (verified-source mainnet contracts) | Real auditor-grade business-logic bugs |
-| **C. Adversarial-no-find** | 5 | Hand-selected legitimate contracts with no known bug | Measure false-positive rate (agent should report no-find) |
+| **C. Adversarial-no-find** | **10** | Hand-selected: 7-8 audited-clean + 2-3 near-miss controls | **Measure false-positive rate** (statistical, not vibe) |
 | **D. Hard-difficulty extension** | 2 | Multi-contract chains (Curve / Aave composability) | Expose harness limit; document failure mode |
 
-Net: 32 → 52 contracts, 6 → 14+ vuln classes, 0 → 5 adversarial-clean contracts.
+Net: 32 → 57 contracts, 6 → 14+ vuln classes, 0 → 10 adversarial-clean contracts (with severity-weighted FPR + near-miss controls).
+
+### Tier C breakdown (the bet, expanded per eng-review)
+
+7-8 **clean controls**: audited contracts with ≥6 months production, no exploits, non-trivial complexity. Agent should emit no-find.
+
+2-3 **near-miss controls**: audited contracts that had a finding patched DURING audit, deployed clean. Agent should NOT re-find the patched bug. Distinct failure mode from "agent fabricates novel bug" — this measures "agent gets confused by patch markers/diff comments."
+
+**Scoring is severity-weighted, not binary:**
+- Critical/High false-positive = 1.0 weight (would embarrass the funnel)
+- Medium false-positive = 0.5 weight
+- Low/Informational false-positive = 0.1 weight (gas optimizations, style nits)
+
+Per-contract score: weighted sum of false-positive severities. Aggregate Tier C score: median across 10 contracts.
+
+Why severity-weighted: "agent flagged a low-sev gas optimization on Gnosis Safe" ≠ "agent screamed reentrancy on USDC." Treating them as equal false-positives discards the most credibility-relevant signal.
 
 ### Tier A — SWC registry coverage (8 contracts)
 
@@ -105,40 +129,82 @@ Pick 2 historical exploits that REQUIRE multi-contract composability to reproduc
 - Forces us to document the sandbox's coverage cap (which we should have anyway).
 - A "Tier D — none converged, here's why" footnote is more credible than silently omitting the hard cases.
 
-## Implementation phases
+## Reproducibility protocol (NEW per eng-review)
 
-### Phase 1 — schema + tooling (no new contracts yet)
+Single-run-per-contract on a stochastic agent is not a benchmark. Specifying:
 
-- Extend `benchmark/dataset.json` schema to support `tier` (A/B/C/D) and `groundTruth` (`exploit-known` / `no-known-bug`)
-- Update reporter to emit per-tier breakdowns alongside aggregate
-- Add a "Tier C calibration" subsection on the leaderboard
+| Parameter | Value | Why |
+|---|---|---|
+| **Runs per contract** | n=3 | Stochastic agent — single run is a screenshot, not a measurement |
+| **Statistic reported** | Median + IQR | Robust to one outlier run; honest about variance |
+| **Model version** | `claude-sonnet-4-20250514` (exact build, not floating tag) | "Sonnet 4 via OpenRouter" is unreproducible — it updates silently |
+| **Temperature** | 0.7 (the agent's default — matches existing run config) | Pin to existing config; explicitly note in v2 numbers |
+| **Top-p** | 1.0 (default) | Same |
+| **System prompt version** | Git SHA of `src/agent/red-prompt.md` at run start | Prompt changes invalidate prior numbers |
+| **Iteration cap** | 30 (matches existing) | Same harness |
+| **Wall-clock cap** | 60 minutes per contract per run | Same harness |
 
-**Effort:** ~1 day work for an experienced TS engineer. ~1 hour with Claude + gstack.
+The leaderboard publishes the version + git SHA + model build alongside every aggregate number. v1 numbers (67.7% / 13.7%) get retroactively pinned to whatever they were run on — not back-filled, just labeled.
 
-### Phase 2 — Tier C population (highest priority)
+## Tier C disclosure pre-commitment (NEW per /codex)
 
-Add 5 Tier C contracts first. They're the most credibility-changing additions and the hardest to fake. Run agent on all 5; document false-positive rate honestly even if embarrassing.
+**Written before any Tier C run, not after:** the leaderboard's Tier C section will read approximately as follows, with results filled in after the run:
 
-**Effort:** ~2 days for sourcing + sanity-checks. Needs operator's eyes on each Tier C candidate (genuinely no known bug).
+> Tier C (Adversarial-no-find): 10 contracts, audited and clean ≥6 months production. Severity-weighted false-positive rate: **{X}%**. {N}/10 contracts where the agent emitted no-find (correct outcome). {M}/10 where the agent claimed a finding (false-positive — published in detail below).
+>
+> If you are a hiring decision-maker reading this: this section exists because we believe an agent that fabricates findings is the failure mode that matters most. We measured it and published the result whatever it was. If the rate above is high enough to give you pause, that is correct — pause is the appropriate response.
 
-### Phase 3 — Tier A + B fill-in
+The pre-commit is the protection: operator cannot quietly delete Tier C if the result is bad. Whatever the score is, it ships.
 
-Tier A SWC cases (synthetic) come from existing public test contracts; mostly mechanical work.
-Tier B Code4rena historical needs hand-curation; start with 2-3 high-confidence picks before going wider.
+**False-find handling is option (b) from the original open question:** transparent disclosure with full per-contract breakdown. Each false-positive gets its own entry showing what the agent claimed, what the actual contract does, and why the agent was wrong. Disclosure post drafted before Phase 2 begins, not after.
 
-**Effort:** ~3-4 days.
+## Implementation phases (post-review, with hard cap)
+
+**6-day hard cap** (per /codex): if Phase 2 + Phase 1 overlap takes more than 6 calendar days, kill remaining tiers and ship Tier C standalone. Tier C alone is the most credibility-changing addition; the rest is gravy.
+
+### Phase 1 — schema + tooling (PARALLEL with Phase 2)
+
+Per eng-review: schema is engineering work, sourcing is human work — no dependency, save 1 day by running both at once.
+
+- Extend `benchmark/dataset.json` schema with `tier`, `groundTruth`, `severityWeight` fields
+- Update reporter to emit per-tier breakdowns + median/IQR + model version metadata
+- Add "Tier C calibration" subsection on the leaderboard with the pre-commit copy above
+- Pin run config (model version, temp, prompt SHA) into the run output JSON
+
+**Effort:** ~1 hour with Claude + gstack. Independent of Phase 2.
+
+### Phase 2 — Tier C standalone (highest priority, blocks Phase 3+)
+
+Source + sanity-check 10 Tier C contracts. Pre-commit publication post drafted. Run agent N=3 times per contract. Publish results.
+
+**Pause/reassess gate:** if severity-weighted FPR > 80%, pause Phase 3+ and reassess methodology. Do NOT proceed to other tiers if Tier C reveals a fundamental fabrication problem.
+
+**Effort:** ~2 days human work for sourcing + sanity-checks (operator eyes-on each Tier C candidate). API cost: 10 contracts × 3 runs × $0.89 ≈ $27. Time: ~3 hours wall-clock if sequential.
+
+### Phase 3 — Tier A + B fill-in (gated on Phase 2 result)
+
+Tier A SWC synthetic: mechanical work, ~1 day with Claude.
+Tier B Code4rena historical: 2-3 high-confidence picks first, then expand. Each candidate must pass our sanity-check (run the documented exploit, confirm RED before adding).
+
+**Effort:** ~3 days. API cost: 13 contracts × 3 runs × $0.89 ≈ $35.
 
 ### Phase 4 — Tier D documentation
 
-Add the 2 multi-contract bugs. Run them. Document the failure. Publish "Tier D — 0/2 converged, here's why and here's what would be needed."
+Add 2 multi-contract chains. Run them. Document the failure. Publish "Tier D — 0/2 converged, here's why."
 
 **Effort:** ~1 day.
 
-### Phase 5 — re-run + publish v2 numbers
+### Phase 5 — full re-run + publish v2 numbers
 
-Run the full agent loop against the new 52-contract corpus. Publish updated leaderboard with per-tier breakdown. Updated headline numbers (likely lower than 67.7% — that's fine, that's the point).
+Run all 57 contracts × 3 runs against new agent build. Publish updated leaderboard with per-tier breakdown.
 
-**Effort:** ~$30-50 in API costs (52 contracts × ~$0.89 average). Wall time ~6-8 hours sequential, less if parallelized.
+**Effort:** ~$110 API cost (57 × 3 × $0.89, includes Phase 2-4 reruns for stability). Wall time ~10-12 hours sequential, less if parallelized.
+
+### Total revised budget
+
+- **API: $110-150** (revised up from $30-50 because n=3 runs + 57 contracts not 52)
+- **Wall time: ~6 calendar days hard cap** for Phases 1+2; +3-4 days if Phases 3-5 also ship
+- **Operator time: ~1-2 hours total** for Tier C sourcing eyes-on + final approval before publish
 
 ## What this v2 corpus is NOT
 
