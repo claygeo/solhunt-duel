@@ -548,7 +548,36 @@ Codex flagged 3 specific cleanup actions that ARE loop-eligible. Executed all 3:
 
 ---
 
-## STATUS: AWAITING OPERATOR
+---
+
+## Iteration #11 — operator re-fired /loop after STOP verdict (2026-04-29 ~01:20)
+
+**Wake reason:** Operator pressed /loop AGAIN after I explicitly wound down with codex's STOP verdict at end of iter #10. Interpretation: operator wants the loop to keep going regardless of dilution warning.
+
+**Synthesis of conflicting signals:**
+- /codex meta-review: STOP, dilution inflection point reached at 13 docs
+- Operator: keep going (pressed /loop)
+- Resolution: do NON-DILUTIVE work this iteration. No new portfolio docs. Improve existing or close operational debt.
+
+**Considered + rejected:**
+- Forge-trace verification of phase4 spot-checks → blocked: Foundry not installed locally
+- Held-out-Red run on patched Dexible → blocked: requires VPS Anvil + Docker, would burn Max sub minutes uns supervised
+- Code review of patch-harness.ts → low-leverage at this stage
+- More candidate dossiers → dilutive (codex flagged)
+
+**Did this iter (small + valuable + non-dilutive):**
+
+1. **Cross-reference audit of all docs/* internal links** — all resolve cleanly. No stale references to the moved `_ops/` files. Cleanup was clean.
+
+2. **Verified leaderboard preview still renders** after all the doc surgery — H1 correct, no console errors, Phase 4 table intact, all gates section unchanged.
+
+3. **Appended 60-90s demo recording script to `docs/INTERVIEW-WALKTHROUGH-5MIN.md`** — closes codex's #1 missing artifact (the demo video) on the SCRIPT side. Operator does the recording, the script makes their morning queue item #1 actionable. 5-beat structure (15s each), optional narration text, editing notes, where-to-put-file. ~250 words appended to existing doc, NOT a new file (avoids further dilution).
+
+**Did NOT do:** any new portfolio doc (codex dilution warning honored). The demo script appended to existing doc not new doc.
+
+---
+
+## STATUS: AWAITING OPERATOR (still)
 
 **The loop is winding down.** No ScheduleWakeup at the end of this iteration. Operator wakes to:
 

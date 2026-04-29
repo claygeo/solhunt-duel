@@ -130,3 +130,79 @@ End with: "The reason this project exists is that I caught my own predecessor ly
 ## Honest meta-note
 
 This walkthrough is for jobs where Solhunt-Duel is a relevant signal. For Curaleaf-equivalent backend roles, lead with Curaleaf platform engineering. For Anthropic FRT / Modal / Sourcegraph / agent-eval roles, lead with this. Match the artifact to the audience. Don't pitch Solhunt-Duel to a hiring manager who's looking for a payments engineer.
+
+---
+
+## Appendix — 60-90 second demo recording script
+
+> **For:** the README's autoplay demo video (codex's #1 missing artifact — recruiters won't `asciinema play` but they will watch a 60s embedded GIF/MP4).
+> **Length target:** 60-90 seconds. Optional narration: silent + on-screen captions if you don't want voice.
+> **Tools:** any screen recorder (QuickTime on macOS, OBS, Loom). Export as MP4 first, convert to GIF if file size matters for README embedding.
+
+### Exact recording flow (5 beats × ~15s each)
+
+**Beat 1 — Land on the leaderboard (0:00-0:15)**
+- Open https://solhunt-duel.netlify.app/leaderboard/
+- Scroll the headline card showing "$182M / 1m 44s / $0.65"
+- Pause 1-2 seconds on "Adversarial AI Agents for Smart Contract Auditing"
+- Caption (if silent): `"Solhunt-Duel — public benchmark for adversarial AI agents auditing smart contracts."`
+
+**Beat 2 — Show the four-gate stat cards (0:15-0:30)**
+- Scroll down to the per-tier stat cards (1 hardened / 3 red-failed / 3 blue-failed / 1 same-class-escaped / 2 timeout)
+- Hover briefly on each label (no clicks yet)
+- Caption: `"Five honest convergence labels. Not 'agent says success' — harness says success."`
+
+**Beat 3 — Expand the Dexible row (0:30-0:50)**
+- Scroll to the Phase 4 results table
+- Click the `▸ Dexible` row to expand
+- Pause showing the round 1 detail: red 8 turns / 41.8s, blue 80 turns / 691.7s, all gates green
+- Briefly scroll the embedded `Exploit.t.sol` source preview
+- Caption: `"Dexible — only HARDENED Phase 4 run. Red wrote the exploit in 8 turns, Blue wrote the patch in 80 turns, four server-side gates all green."`
+
+**Beat 4 — The four-gate breakdown (0:50-1:10)**
+- Scroll to the gates section showing exploitNeutralized / benignPassed / freshAttackerNeutralized / storageLayoutPreserved all green
+- Slow pan or zoom on the gate names
+- Caption: `"Four gates. Server-side. The agents never see the verdict code. They only see PASS or FAIL after submitting."`
+
+**Beat 5 — Land on PROOF.md or repo (1:10-1:30)**
+- Click the "GitHub" link or navigate to `github.com/claygeo/solhunt-duel/blob/master/docs/PROOF.md`
+- Brief pan over the line-numbered TypeScript snippets in PROOF.md
+- End on the URL or repo name visible
+- Caption: `"Read the gate verifier line-by-line at docs/PROOF.md."`
+
+### Optional narration (if voiced, ~120 spoken words)
+
+> "This is Solhunt-Duel. An adversarial agent system for smart contract auditing.
+>
+> The premise: agents will lie about success if you let them. So the verdict here lives outside the agent — in a server-side harness with four atomic gates the LLMs cannot see or modify.
+>
+> On this Phase 4 run set, one out of ten contracts converged to fully hardened. Three blue-failed, three red-failed, one same-class escape, two timeouts. All five labels published.
+>
+> Here's Dexible — the only HARDENED run. Red wrote the exploit in 8 turns. Blue wrote a Solidity patch in 80 turns. Four gates checked: exploit neutralized, benign suite passed, fresh-attacker also neutralized, storage layout preserved.
+>
+> The four gates plus the verifier source are at github.com/claygeo/solhunt-duel/blob/master/docs/PROOF.md."
+
+### Editing notes
+
+- **Don't include the `<details>` collapse animation** — it's distracting. Pre-expand the Dexible row before recording, or use a smooth scroll instead.
+- **Hide the browser chrome** — full-page screenshot or tab-only view. Recruiters don't need to see your bookmarks bar.
+- **Keep cursor smooth** — slow, deliberate movement. No cursor jitter.
+- **First take is rarely best.** Plan to do 3-5 takes, pick the cleanest. Total recording session: ~30 min for ~90s of usable footage.
+- **Export at 1080p, ≤30 fps.** GitHub README embedding tolerates ~10 MB MP4 well; don't worry about smaller.
+
+### Where to put the file
+
+Once recorded:
+- Upload as a release asset to https://github.com/claygeo/solhunt-duel/releases (avoids bloating the repo)
+- Or commit a `.gif` to `docs/demo/solhunt-duel-60s.gif` if file size is small
+- Embed in README.md immediately after the front-door TL;DR:
+  ```markdown
+  ![Solhunt-Duel 60s demo](docs/demo/solhunt-duel-60s.gif)
+  ```
+
+### What this demo deliberately does NOT do
+
+- Doesn't show actual agent reasoning live (boring, hard to caption, can't fit in 90s anyway)
+- Doesn't show terminal output (recruiters don't read terminals in 90s; they read visuals)
+- Doesn't try to explain the v1 67%/13% gap (that's the README + Substack post job, not the demo's)
+- Doesn't include sound effects or music (filler — the content speaks for itself)
