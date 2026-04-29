@@ -1,19 +1,28 @@
-# solhunt — autonomous AI agent that writes working smart-contract exploits
+# Solhunt-Duel — adversarial AI agents for smart contract auditing
 
-> **Beanstalk Farms — $182M flash-loan governance hack — reproduced in 1m44s for $0.65 in API costs.** No hint, no oracle, no help. The agent read the source, identified the Diamond proxy's unrestricted `delegatecall`, and produced a runnable Foundry exploit test that drained the diamond's balance to zero.
+> **Live leaderboard:** [solhunt-duel.netlify.app/leaderboard](https://solhunt-duel.netlify.app/leaderboard/) — public benchmark, click-to-expand round-by-round, all 4 gates per duel.
 >
-> Across a curated 32-contract DeFiHackLabs benchmark: **67.7% exploit rate at $0.89/contract average** (Claude Sonnet 4 via OpenRouter). Reference baseline: Anthropic's SCONE-bench reported 51.1% on the same class of task.
+> **The premise:** agents will lie about success if you let them. So in Solhunt-Duel the verdict lives in a server-side harness the agents cannot see or modify. Every "hardened" claim on the leaderboard is backed by four atomic gates checked via `forge test`, not by an agent's self-report.
 
-You give it a contract address. It either (a) writes a runnable Foundry exploit test that proves the contract is broken, or (b) emits a structured report explaining what it considered and why nothing was found. Every claim is backed by `forge test` output, not LLM assertion.
+Two related projects in this repo:
 
-- Repo: https://github.com/claygeo/solhunt-duel
-- Live UI demo: https://solhunt-duel.netlify.app
-- **Public benchmark leaderboard: https://solhunt-duel.netlify.app/leaderboard/** (click-to-expand round-by-round, all 4 gates per duel, honest convergence breakdown)
-- Beanstalk case study: [docs/CASE_STUDY_BEANSTALK.md](docs/CASE_STUDY_BEANSTALK.md)
-- Full benchmark JSON: [benchmark/dataset.json](benchmark/dataset.json)
-- Per-vuln-class breakdown: [section below](#solhunt-by-vulnerability-class)
+- **Solhunt-Duel** (current, what the leaderboard tracks) — Red writes exploits, Blue writes Solidity patches, a [4-gate verifier](docs/PROOF.md) decides who won. 10 contracts in the Phase 4 set so far. Per-tier breakdown on the leaderboard.
+- **Solhunt** (predecessor, where the headline numbers come from) — single-agent scanner. **67.7%** exploit rate on a curated 32-contract DeFiHackLabs subset, **13.7%** on a random 95-contract draw. The 54-point gap between curated and random is the published origin story for why Solhunt-Duel uses external gates instead of agent self-reports.
 
-> The repo is named `solhunt-duel` for historical reasons (the Red/Blue adversarial extension is described [further down](#the-redblue-adversarial-loop-solhunt-duel)). The agent itself, the benchmark, and the headline numbers above are **solhunt** — the red-team scanner. The duel sits on top of it.
+> **Beanstalk reproduction:** $182M flash-loan governance hack, reproduced in **1m44s for $0.65** in API costs. No hint, no oracle, no help. ([case study](docs/CASE_STUDY_BEANSTALK.md))
+
+## Read more
+
+| | |
+|---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | end-to-end system design, Red↔Blue loop, fresh-address bytecode cloning, mermaid diagrams |
+| [`docs/PROOF.md`](docs/PROOF.md) | line-by-line walkthrough of the 4-gate verifier; "what the LLM sees / doesn't see" falsifiable claim audit |
+| [`docs/CASE_STUDY_BEANSTALK.md`](docs/CASE_STUDY_BEANSTALK.md) | Beanstalk reproduction with full run log + asciinema |
+| [`docs/PLAN-V2-BENCHMARK-EXPANSION.md`](docs/PLAN-V2-BENCHMARK-EXPANSION.md) | corpus expansion plan (32 → 57 contracts), reviewed by /plan-eng-review + /codex outside-voice |
+| [`docs/V2-TIER-C-CANDIDATES.md`](docs/V2-TIER-C-CANDIDATES.md) | adversarial-no-find candidate dossier (false-positive rate measurement) |
+| [`docs/V2-TIER-B-CANDIDATES.md`](docs/V2-TIER-B-CANDIDATES.md) | Code4rena historical candidate dossier |
+| [`docs/INTERVIEW-WALKTHROUGH-5MIN.md`](docs/INTERVIEW-WALKTHROUGH-5MIN.md) | 5-min architecture walkthrough script (for screen calls) |
+| [`benchmark/dataset.json`](benchmark/dataset.json) | the 32-contract Solhunt benchmark corpus |
 
 ## Watch it work (no install)
 
