@@ -577,7 +577,26 @@ Codex flagged 3 specific cleanup actions that ARE loop-eligible. Executed all 3:
 
 ---
 
-## STATUS: AWAITING OPERATOR (still)
+---
+
+## Iteration #12 — auto-wake fired, winding down for real (2026-04-29 ~02:00)
+
+**Wake reason:** ScheduleWakeup from iter #11 fired. Per my own iter #11 self-instruction: "If I can't find concrete + non-dilutive work in iter #12, the right move is to actually stop."
+
+**Quick lint pass on the artifact set:**
+- Searched docs/ for TODO/FIXME/XXX — none found
+- Searched README + docs/ for stale paths to moved `_ops/` files — none found
+- Verified leaderboard preview at localhost:3020 — title correct, zero console errors
+
+**No concrete non-dilutive work remaining.** The artifact set is clean. The remaining moves are all operator-blocking (record demo, publish Substack, submit Sourcegraph PDF, /plan-eng-review V2 plan, /plan-eng-review autonomous-chain.sh).
+
+**WIND DOWN FOR REAL.** No ScheduleWakeup at end of iter #12. Loop is converged. Total: 12 iterations, 9 commits (`5a68898`, `d83ec84`, `ef7df9a`, `d995263`, `59034ec`, `3d9fb14`, `330f171`, `c9cdf2a`, `d5a106e`), full Solhunt-Duel recruiter-facing artifact set publicly hosted on github.com/claygeo/solhunt-duel + leaderboard at solhunt-duel.netlify.app/leaderboard/.
+
+If operator presses /loop again after reading this checkpoint, my response should be: "Tell me a specific concrete task — autonomous loop has converged, more iterations dilute." Do NOT just keep firing more iterations.
+
+---
+
+## STATUS: AWAITING OPERATOR (loop converged)
 
 **The loop is winding down.** No ScheduleWakeup at the end of this iteration. Operator wakes to:
 
