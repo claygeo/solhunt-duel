@@ -17,7 +17,8 @@ Two related projects in this repo:
 |---|---|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | end-to-end system design, Red↔Blue loop, fresh-address bytecode cloning, mermaid diagrams |
 | [`docs/PROOF.md`](docs/PROOF.md) | line-by-line walkthrough of the 4-gate verifier; "what the LLM sees / doesn't see" falsifiable claim audit |
-| [`docs/CASE_STUDY_BEANSTALK.md`](docs/CASE_STUDY_BEANSTALK.md) | Beanstalk reproduction with full run log + asciinema |
+| [`docs/CASE_STUDY_BEANSTALK.md`](docs/CASE_STUDY_BEANSTALK.md) | Beanstalk reproduction (Solhunt single-agent) with full run log + asciinema |
+| [`docs/CASE_STUDY_DEXIBLE.md`](docs/CASE_STUDY_DEXIBLE.md) | Dexible Phase 4 duel (only HARDENED run): Red exploit + Blue patch + 4-gate verdict end-to-end |
 | [`docs/PLAN-V2-BENCHMARK-EXPANSION.md`](docs/PLAN-V2-BENCHMARK-EXPANSION.md) | corpus expansion plan (32 → 57 contracts), reviewed by /plan-eng-review + /codex outside-voice |
 | [`docs/V2-TIER-C-CANDIDATES.md`](docs/V2-TIER-C-CANDIDATES.md) | adversarial-no-find candidate dossier (false-positive rate measurement) |
 | [`docs/V2-TIER-B-CANDIDATES.md`](docs/V2-TIER-B-CANDIDATES.md) | Code4rena historical candidate dossier |
