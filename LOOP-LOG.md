@@ -491,9 +491,118 @@ Tier 2 (if time):
 
 ---
 
-## Operator wake-up summary (will be in last iteration before morning)
+---
 
-[empty — will populate near morning]
+## Iterations #8-9 — research artifacts + Dexible case study (continuous, no-wait mode)
+
+**Iter #8** (~2026-04-29 ~00:30): Tier C + Tier B + Inspect-AI candidate dossiers (commit `59034ec`).
+- `docs/V2-TIER-C-CANDIDATES.md` — 10 contracts (7 audited-clean + 3 near-miss controls), severity-weighted FPR scoring, operator verification workflow before any contract enters corpus
+- `docs/V2-TIER-B-CANDIDATES.md` — 5 Code4rena historical (Maple V1, Frax Fraxlend, Astaria, JPEG'd, Pendle V2). Per-candidate sanity-check workflow (NO entry without operator reproducing the bug on our fork)
+- `docs/INSPECT-AI-PR-TARGET.md` — issue #3770 (verification taxonomy on @scorer) is a perfect-fit PR target. Solhunt-Duel's PROOF.md thesis = exact same problem applied to eval framework. Sequential after v2 ships per /codex review.
+
+**Iter #9 README front-door** (commit `3d9fb14`):
+- Restructured README first ~30 lines to lead with Solhunt-Duel (was leading with Solhunt scanner)
+- Read-more table linking ARCHITECTURE / PROOF / CASE_STUDY_BEANSTALK / V2 plan / Tier C+B / INTERVIEW-WALKTHROUGH / dataset
+- Dropped the misleading "Above SCONE-bench" inline comparison from headline area
+
+**Iter #9 Dexible case study** (commit `330f171`):
+- `docs/CASE_STUDY_DEXIBLE.md` — full Solidity diff + 4-gate verdict for the only HARDENED Phase 4 run
+- What Red did (8 turns, transferFrom-as-router exploit), what Blue did (80 turns, append-only allow-list patch)
+- All 5 forge_test stages with expected/actual gates table
+- Why Dexible is THE case study (real $2M, one-liner bug, patch demonstrates all 4 gate disciplines)
+- Honest limitations (reproduction stripped fees, allow-list is ONE correct fix not THE fix, fresh-address means no live storage collision test)
+
+---
+
+## Iteration #10 — codex meta-review verdict: STOP, cleanup, wind down
+
+**Wake reason:** spawned /codex outside-voice for holistic meta-review of the artifact set after iter #9. Verdict: **STOP. Wind the loop down now.** Three reasons codex gave:
+
+1. **Dilution inflection point reached** — 13 docs. The 14th weakens the set, not strengthens it.
+2. **Remaining high-leverage moves are operator-blocking** (record demo video, publish Substack, submit Sourcegraph PDF, /plan-eng-review autonomous-chain.sh)
+3. **Better to leave a coherent set + clean morning queue than bury the queue under more autonomous iterations**
+
+Codex flagged 3 specific cleanup actions that ARE loop-eligible. Executed all 3:
+
+**1. Moved operational drafts out of `docs/`** (codex: "publishing the draft of the framing is not portfolio")
+- `docs/WEEKLY-CADENCE-TEMPLATE.md` → `_ops/WEEKLY-CADENCE-TEMPLATE.md`
+- `docs/SUBSTACK-POST-1-DRAFT.md` → `_ops/SUBSTACK-POST-1-DRAFT.md`
+- New `_ops/README.md` explaining "internal operational artifacts, not portfolio"
+
+**2. Trimmed README** (codex: "454 lines, recruiter won't scroll")
+- Cut Architecture mermaid section (line 254-307 — exists in ARCHITECTURE.md)
+- Cut "How it actually works" 8-step duel walkthrough (line 308-331 — exists in ARCHITECTURE.md + PROOF.md)
+- Replaced with 3-line link section pointing to ARCHITECTURE / PROOF / CASE_STUDY_DEXIBLE
+- Result: 474 → 401 lines
+
+**3. Consolidated 4-gate duplication** (codex: "appears 4 times in 4 files, pick canonical")
+- README's gate list now 2 lines + link to PROOF.md as canonical
+- ARCHITECTURE.md keeps its gates table (necessary architectural context)
+- PROOF.md is the single canonical home with line-by-line walkthrough
+- CASE_STUDY_DEXIBLE.md has gate-by-gate verdict table (run-specific, not redundant spec)
+
+**4. Disambiguated duplicate "Honest failure modes" headings**
+- README line 130 → "Honest failure modes (Solhunt scanner)" — Drips false-positive case
+- README line 318 → "Honest failure modes (Solhunt-Duel Phase 4)" — Phase 4 specific failures
+- Both have unique content; just needed disambiguating headers
+
+---
+
+## STATUS: AWAITING OPERATOR
+
+**The loop is winding down.** No ScheduleWakeup at the end of this iteration. Operator wakes to:
+
+### Solhunt-Duel artifact set as it stands (commits 5a68898 → cleanup)
+
+Public portfolio (`docs/`):
+- `ARCHITECTURE.md` — system design, mermaid diagrams, recruiter-readable TL;DR
+- `PROOF.md` — line-by-line gate verifier walkthrough (canonical home for 4 gates)
+- `CASE_STUDY_DEXIBLE.md` — only HARDENED Phase 4 run, full Solidity diff
+- `CASE_STUDY_BEANSTALK.md` — Solhunt scanner predecessor reproduction
+- `INTERVIEW-WALKTHROUGH-5MIN.md` — 5-min screen-call script (3-min / 15-min / behavioral variants)
+- `PLAN-V2-BENCHMARK-EXPANSION.md` — V2 corpus plan, /plan-eng-review + /codex reviews integrated
+- `V2-TIER-C-CANDIDATES.md` — 10 adversarial-no-find candidates
+- `V2-TIER-B-CANDIDATES.md` — 5 Code4rena historical candidates
+- `INSPECT-AI-PR-TARGET.md` — issue #3770 dossier (sequential after v2)
+
+Internal (`_ops/`):
+- `WEEKLY-CADENCE-TEMPLATE.md` — Friday post template
+- `SUBSTACK-POST-1-DRAFT.md` — post-1 draft (67%/13% gap)
+
+Live URLs:
+- Public leaderboard: https://solhunt-duel.netlify.app/leaderboard/ (deploys after next Netlify build)
+- GitHub: https://github.com/claygeo/solhunt-duel
+
+### Morning queue (5 concrete items, ~half-day total)
+
+1. **Record 60-90s demo video** — codex specifically called this out as the single highest-leverage missing artifact. Anthropic FRT and Modal weight "can show the work running." MP4/GIF on the README, autoplay, showing leaderboard + one duel expanding + 4 gates lighting up green. Not asciinema (requires install).
+2. **Operator + /codex final pass on Substack post draft** at `_ops/SUBSTACK-POST-1-DRAFT.md`. After approval: set up `solhunt.substack.com`, schedule for Tuesday 10am ET (NOT Friday — Friday is for weekly cadence drops).
+3. **Sourcegraph IC2 submit** — config + tailored CV at `~/career-ops/config-sourcegraph-ic2.json` and `output/cv-clayton-sourcegraph-ic2.html`. Steps: (a) generate PDF via `node generate-pdf.mjs cv-clayton-sourcegraph-ic2`, (b) verify PDF visually, (c) run `node apply-universal.mjs config-sourcegraph-ic2.json`, (d) review pre-filled fields, paste cover letter answers, click Submit.
+4. **/plan-eng-review on V2 plan + Tier C dossier** — both already reviewed in autonomous loop. Operator pass before greenlighting Phase 2 (Tier C standalone). Pre-commit the disclosure post text BEFORE running.
+5. **/plan-eng-review on `scripts/autonomous-chain.sh` Stage 0** — current Stage 0 stops on `STATUS=FOUND` regardless of REVIEWED-* sidecars. Needs proper code change to honor sidecars before re-kicking the chain for Inverse FiRM + ENS sweep.
+
+### Honest 90-day read (per /codex meta)
+
+**Realistic outcome: screen call at a tier-2 company** (Sourcegraph IC2, Modal, Replit, Vercel AI SDK, METR). Solhunt-Duel is clearly above the bar for these. Anthropic FRT screen would require either a published Inspect-AI PR landing or the Substack post going viral — both uncertain on 90-day timeline. The Twyne-rejection discipline + PROOF.md falsifiability is genuinely rare at any YOE; that's the wedge.
+
+### What got commited this loop (chronological)
+
+| Commit | Description |
+|---|---|
+| `5a68898` | iter #4 checkpoint + Twyne find audit trail + chain scripts |
+| `d83ec84` | leaderboard at /leaderboard/ + Friday cadence + Substack draft |
+| `ef7df9a` | PROOF.md + V2 benchmark plan + supersede skim draft |
+| `d995263` | ARCHITECTURE recruiter-readable + V2 plan integrated reviews + interview walkthrough |
+| `59034ec` | V2 corpus tier candidates + Inspect-AI PR target dossier |
+| `3d9fb14` | README lead with Solhunt-Duel + read-more table |
+| `330f171` | CASE_STUDY_DEXIBLE end-to-end Phase 4 HARDENED walkthrough |
+| (next) | cleanup: _ops/ move + README trim + gate-list canonical home |
+
+---
+
+## Operator wake-up summary
+
+8 commits across 10 iterations of autonomous loop work. Solhunt-Duel artifact set is **B+ on substance, B- on signal density** (codex's verdict). Morning queue is 5 items, ~half a day. Loop is intentionally not auto-resuming so the morning queue isn't buried by more iterations. Read this LOOP-LOG end-to-end if compacted; everything's checkpointed here.
 
 ---
 

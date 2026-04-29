@@ -127,7 +127,7 @@ The four agent tools:
 
 ---
 
-## Honest failure modes
+## Honest failure modes (Solhunt scanner)
 
 This isn't a magic box. The numbers above include real misses, and the project ethos is to publish them rather than cherry-pick.
 
@@ -161,16 +161,11 @@ solhunt-duel sits on top of the red-team scanner described above. After Red writ
 
 Both agents run via `claude -p` subprocess (Max subscription, $0 marginal cost per duel).
 
-### The four defensibility gates ([src/sandbox/patch-harness.ts](src/sandbox/patch-harness.ts))
+### The four defensibility gates
 
-A patch only counts as passing when ALL four hold on the patched runtime bytecode:
+`exploitNeutralized`, `benignPassed`, `freshAttackerNeutralized`, `storageLayoutPreserved`. A patch is "hardened" only when all four are green. Server-side, enforced in [src/sandbox/patch-harness.ts](src/sandbox/patch-harness.ts), agents can't see or fake them.
 
-1. **`exploitNeutralized`** — Red's exploit forge test now fails
-2. **`benignPassed`** — auto-generated happy-path test suite still passes
-3. **`freshAttackerNeutralized`** — exploit re-run from a different attacker EOA also fails (catches "ban one address" overfit)
-4. **`storageLayoutPreserved`** — patched source doesn't reorder existing state variables (`forge inspect storageLayout` diff)
-
-The gates are enforced server-side in the harness, not by the agent. Agents can't fake them.
+For the line-by-line walkthrough of how each gate is computed, including the falsifiability section ("what the LLM sees / doesn't see"): **[`docs/PROOF.md`](docs/PROOF.md)**.
 
 ### The Dexible duel (real 2023 DeFi hack, ~$2M drained)
 
@@ -251,81 +246,13 @@ That's what the adversarial loop is for. A single-shot exploit-then-patch pipeli
 
 ---
 
-## Architecture
+## Architecture & verifier
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                          duel orchestrator                      │
-│                 src/duel/orchestrator.ts                        │
-│  IDLE → RED_SCAN → {found?} → PATCH → VERIFY → {gates?}         │
-│      → NEXT_ROUND / CONVERGED / BLUE_FAILED / BUDGET_EXHAUSTED  │
-└────────────────────────────────────────────────────────────────┘
-              │                 │                      │
-              ▼                 ▼                      ▼
-    ┌──────────────┐   ┌──────────────┐      ┌───────────────┐
-    │ Red agent    │   │ Blue agent   │      │ Audit trail   │
-    │ loop-via-    │   │ blue-loop.ts │      │ audit-trail   │
-    │ claude-cli   │   │ blue-prompt  │      │ grounded      │
-    │ .ts          │   │ .md          │      │ citations     │
-    └──────┬───────┘   └──────┬───────┘      └───────────────┘
-           │                  │
-           ▼                  ▼
-    ┌────────────────────────────────┐
-    │ Docker sandbox + Anvil fork    │
-    │ src/sandbox/                   │
-    │  patch-harness.ts  (4 gates)   │
-    │  clone-bytecode.ts  (fresh)    │
-    │  exploit-harness-cli.ts         │
-    │  run_exploit.sh / verify_patch │
-    └────────────────────────────────┘
-```
+For the system design (Red↔Blue loop, fresh-address bytecode cloning, four-gate harness, claude-cli subprocess), see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-### The four defensibility gates (`src/sandbox/patch-harness.ts`)
+For the line-by-line walkthrough of the four gates as they're computed in [`src/sandbox/patch-harness.ts`](src/sandbox/patch-harness.ts) — the load-bearing claim that the verdict lives outside the agent — see [`docs/PROOF.md`](docs/PROOF.md).
 
-A patch only counts as passing when ALL four hold on the patched runtime bytecode:
-
-1. **`exploitNeutralized`** — Red's exploit forge test now fails
-2. **`benignPassed`** — auto-generated happy-path test suite still passes
-3. **`freshAttackerNeutralized`** — exploit re-run from a different attacker EOA also fails (catches "ban one address" overfit)
-4. **`storageLayoutPreserved`** — patched source doesn't reorder existing state variables (`forge inspect storageLayout` diff)
-
-The gates are enforced server-side in the harness, not by the agent. Agents can't fake them.
-
-### Fresh-address bytecode cloning (`scripts/redeploy-defihacklabs.ts`)
-
-Real mainnet addresses of famous DeFi exploits trigger Anthropic's Usage Policy filter after extended bytecode recon. `scripts/redeploy-defihacklabs.ts` uses `anvil_setCode` + `anvil_setStorageAt` to clone the exact vulnerable bytecode to a fresh fork address. Authentic vulnerable code, no pattern-match trigger. Confirmed working for 43-turn runs with zero refusals.
-
-The Anthropic classifier pattern-matches on address strings, not bytecode content. Redeploying the same bytecode to a fresh address preserves the research artifact and lets the agents run.
-
-### Why `claude -p` subprocess
-
-Both red and blue drive `claude -p` with `--allowedTools Bash,Read,Edit,Write --output-format stream-json --no-session-persistence`, letting Claude Code's native tool loop manage the inner execution. The outer orchestrator handles round progression, state machine transitions, and gate enforcement.
-
-Trade-off: `claude -p` doesn't expose OpenAI-style tool-calling schemas, so architecture is subprocess-driven rather than message-driven.
-
----
-
-## How it actually works (one duel)
-
-1. **Pick target.** A contract from `benchmark/holdout-roster.json` (10 pre-fetched) or a fresh one with `--source-dir <path> --contract-name <name> --redeploy-from <mainnet-address>`.
-
-2. **Clone bytecode.** Orchestrator spins up a Docker sandbox with Anvil forking mainnet at the exploit block, calls `anvil_setCode` to place the vulnerable bytecode at a deterministic fresh address.
-
-3. **Red scans.** `src/agent/loop-via-claude-cli.ts` spawns `claude -p`, feeds Opus the contract source + recon data, lets it drive Bash/Edit/Read/Write until it writes `test/Exploit.t.sol` and `forge test` passes.
-
-4. **Blue patches.** `src/agent/blue-loop.ts` spawns `claude -p`, feeds Opus Red's exploit + source, lets it write a patched `.sol`. Between iterations, `verify_patch` recompiles the patched source, `anvil_setCode`s the patched runtime onto the fresh address, and runs the exploit + benign suites.
-
-5. **Verify gates.** `src/sandbox/patch-harness.ts` enforces all four gates. Returns structured `PatchVerification` JSON.
-
-6. **Round 2+.** If Blue converged, orchestrator injects Blue's patched bytecode as the new baseline and re-runs Red on it. `anvil_setCode` is the hinge.
-
-7. **Audit trail.** `src/duel/audit-trail.ts` emits a grounded per-round entry — every claim cites a specific Red iteration or Blue turn. Stored as `audit_entry` JSONB in `duel_rounds`.
-
-8. **Convergence.**
-   - `hardened` — Red re-scanned the patched bytecode and found nothing
-   - `same_class_escaped` — Red re-found the same vuln class with a variant
-   - `blue_failed` — Blue couldn't converge on a passing patch within budget
-   - `budget_exhausted` — max rounds hit before convergence
+For the only HARDENED Phase 4 run with full Solidity diff and gate-by-gate verdict, see [`docs/CASE_STUDY_DEXIBLE.md`](docs/CASE_STUDY_DEXIBLE.md).
 
 ---
 
@@ -383,7 +310,7 @@ See `scripts/fetch-holdout-sources.ts` for source pre-fetch. Roster is in `bench
 
 ---
 
-## Honest failure modes
+## Honest failure modes (Solhunt-Duel Phase 4)
 
 **Blue's budget is tight.** Five of ten contracts hit `blue_failed`. Red found real exploits; Blue hit round budget or wall-clock before converging. Fix is straightforward (more rounds, tighter prompts) but wasn't applied mid-benchmark because that would break run-once.
 
